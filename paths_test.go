@@ -202,7 +202,7 @@ func TestBuildPaths(t *testing.T) {
 
 	// Delete a key that does not exist
 	if tree.Delete("/L1/L2/L2B/L4") {
-		t.Fatal("should not have deleted non-existant key")
+		t.Fatal("should not have deleted non-existent key")
 	}
 
 	// (root) /L1-> ("", 5) /L2-> ("", _) /L3A-> ("", 2)
@@ -252,6 +252,29 @@ func TestBuildPaths(t *testing.T) {
 	}
 	if vals[0] != 5 || vals[1] != 4 {
 		t.Error("did not get expected values, got ", vals)
+	}
+
+	// Test that Delete prunes
+	if !tree.Delete("/L1/L2B/L3C") {
+		t.Error("did not delete \"/L1/L2B/L3C\"")
+	}
+	node = tree.children["/L1"]
+	if _, ok = node.children["/L2B"]; ok {
+		t.Log(dump(tree))
+		t.Error("deleted leaf should have been pruned")
+	}
+
+	// Test that Delete compresses
+	if !tree.Delete("/L1") {
+		t.Error("did not delete \"/L1/L2B/L3C\"")
+	}
+	node = tree.children["/L1"]
+	if node == nil {
+		t.Fatal("expected node at \"L1\"")
+	}
+	if strings.Join(node.prefix, "") != "/L2/L3A" {
+		t.Log(dump(tree))
+		t.Error("worng prefix for compresses node:", strings.Join(node.prefix, ""))
 	}
 }
 

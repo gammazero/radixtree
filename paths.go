@@ -4,8 +4,9 @@ import (
 	"strings"
 )
 
-// Default path separator is forward slash.  This variable may be set to any
-// rune to allow a different path separator.
+// PathSeparator splits a path key into separate segments.  The default path
+// separator is forward slash.  This variable may be set to any rune to allow a
+// different path separator.
 var PathSeparator = '/'
 
 // Paths is a radix tree of paths with string keys and interface{}
@@ -134,20 +135,7 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 
 	// If key partially matches node's prefix, then need to split node.
 	if p < len(node.prefix) {
-		split := &Paths{
-			children: node.children,
-			value:    node.value,
-		}
-		if p < len(node.prefix)-1 {
-			split.prefix = node.prefix[p+1:]
-		}
-		node.children = map[string]*Paths{node.prefix[p]: split}
-		if p == 0 {
-			node.prefix = nil
-		} else {
-			node.prefix = node.prefix[:p]
-		}
-		node.value = nil
+		node.split(p)
 		isNewValue = true
 	}
 
@@ -160,14 +148,32 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 		isNewValue = true
 	} else {
 		// Store key at existing child
-		if node.value == nil {
-			// Filled in value of existing internal node
-			isNewValue = true
-		}
+		isNewValue = node.value == nil
 		node.value = value
 	}
 
 	return isNewValue
+}
+
+// split splits a node such that a node:
+//     ("pre/fix", "value", child[..])
+// is split into parent branching node, and a child value node:
+//     ("pre/", "", [-])--->("fix/", "value", [..])
+func (node *Paths) split(p int) {
+	split := &Paths{
+		children: node.children,
+		value:    node.value,
+	}
+	if p < len(node.prefix)-1 {
+		split.prefix = node.prefix[p+1:]
+	}
+	node.children = map[string]*Paths{node.prefix[p]: split}
+	if p == 0 {
+		node.prefix = nil
+	} else {
+		node.prefix = node.prefix[:p]
+	}
+	node.value = nil
 }
 
 // Delete removes the value associated with the given key. Returns true if a
@@ -211,34 +217,45 @@ func (tree *Paths) Delete(key string) bool {
 	}
 
 	// If node is leaf, remove from parent.  If parent becomes leaf, repeat.
-	if node.children == nil {
-		// iterate parents towards root of tree, removing the empty leaf node
-		for i := len(parts) - 1; i >= 0; i-- {
-			node = nodes[i]
-			delete(node.children, parts[i])
-			if len(node.children) != 0 {
-				// parent has other children, stop
-				break
-			}
-			node.children = nil
-			if node.value != nil {
-				// parent has a value, stop
-				break
-			}
-		}
-	}
+	node = node.prune(nodes, parts)
 
 	// If node has become compressible, compress it
-	if len(node.children) == 1 && node.value == nil {
-		for part, child := range node.children {
-			node.prefix = append(node.prefix, part)
-			node.prefix = append(node.prefix, child.prefix...)
-			node.value = child.value
-			node.children = child.children
-		}
-	}
+	node.compress()
 
 	return deleted
+}
+
+func (node *Paths) prune(parents []*Paths, links []string) *Paths {
+	if node.children != nil {
+		return node
+	}
+	// iterate parents towards root of tree, removing the empty leaf node
+	for i := len(links) - 1; i >= 0; i-- {
+		node = parents[i]
+		delete(node.children, links[i])
+		if len(node.children) != 0 {
+			// parent has other children, stop
+			break
+		}
+		node.children = nil
+		if node.value != nil {
+			// parent has a value, stop
+			break
+		}
+	}
+	return node
+}
+
+func (node *Paths) compress() {
+	if len(node.children) != 1 || node.value != nil {
+		return
+	}
+	for part, child := range node.children {
+		node.prefix = append(node.prefix, part)
+		node.prefix = append(node.prefix, child.prefix...)
+		node.value = child.value
+		node.children = child.children
+	}
 }
 
 // Walk walks the radix tree rooted at root ("" to start at root or tree),

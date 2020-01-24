@@ -123,20 +123,7 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 
 	// If key partially matches node's prefix, then need to split node.
 	if p < len(node.prefix) {
-		split := &Runes{
-			children: node.children,
-			value:    node.value,
-		}
-		if p < len(node.prefix)-1 {
-			split.prefix = node.prefix[p+1:]
-		}
-		node.children = map[rune]*Runes{node.prefix[p]: split}
-		if p == 0 {
-			node.prefix = nil
-		} else {
-			node.prefix = node.prefix[:p]
-		}
-		node.value = nil
+		node.split(p)
 		isNewValue = true
 	}
 
@@ -147,14 +134,33 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 		node.children[childLink] = newChild
 		isNewValue = true
 	} else {
-		if node.value == nil {
-			// Filled in value of existing internal node
-			isNewValue = true
-		}
+		// Store key at existing child
+		isNewValue = node.value == nil
 		node.value = value
 	}
 
 	return isNewValue
+}
+
+// split splits a node such that a node:
+//     ("prefix", "value", child[..])
+// is split into parent branching node, and a child value node:
+//     ("pre", "", [-])--->("fix", "value", [..])
+func (node *Runes) split(p int) {
+	split := &Runes{
+		children: node.children,
+		value:    node.value,
+	}
+	if p < len(node.prefix)-1 {
+		split.prefix = node.prefix[p+1:]
+	}
+	node.children = map[rune]*Runes{node.prefix[p]: split}
+	if p == 0 {
+		node.prefix = nil
+	} else {
+		node.prefix = node.prefix[:p]
+	}
+	node.value = nil
 }
 
 // Delete removes the value associated with the given key. Returns true if a
@@ -200,34 +206,45 @@ func (tree *Runes) Delete(key string) bool {
 	}
 
 	// If node is leaf, remove from parent. If parent becomes leaf, repeat.
-	if node.children == nil {
-		// iterate parents towards root of tree, removine the empty leaf node
-		for i := len(runes) - 1; i >= 0; i-- {
-			node = nodes[i]
-			delete(node.children, runes[i])
-			if len(node.children) != 0 {
-				// parent has other children, stop
-				break
-			}
-			node.children = nil
-			if node.value != nil {
-				// parent has a value, stop
-				break
-			}
-		}
-	}
+	node = node.prune(nodes, runes)
 
 	// If node has become compressible, compress it
-	if len(node.children) == 1 && node.value == nil {
-		for r, child := range node.children {
-			node.prefix = append(node.prefix, r)
-			node.prefix = append(node.prefix, child.prefix...)
-			node.value = child.value
-			node.children = child.children
-		}
-	}
+	node.compress()
 
 	return deleted
+}
+
+func (node *Runes) prune(parents []*Runes, links []rune) *Runes {
+	if node.children != nil {
+		return node
+	}
+	// iterate parents towards root of tree, removine the empty leaf node
+	for i := len(links) - 1; i >= 0; i-- {
+		node = parents[i]
+		delete(node.children, links[i])
+		if len(node.children) != 0 {
+			// parent has other children, stop
+			break
+		}
+		node.children = nil
+		if node.value != nil {
+			// parent has a value, stop
+			break
+		}
+	}
+	return node
+}
+
+func (node *Runes) compress() {
+	if len(node.children) != 1 || node.value != nil {
+		return
+	}
+	for r, child := range node.children {
+		node.prefix = append(node.prefix, r)
+		node.prefix = append(node.prefix, child.prefix...)
+		node.value = child.value
+		node.children = child.children
+	}
 }
 
 // Walk walks the radix tree rooted at root ("" to start at root or tree),

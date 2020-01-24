@@ -272,6 +272,32 @@ func TestBuildRunes(t *testing.T) {
 	if vals[0] != "TO" || vals[1] != "TOM" || vals[2] != "TOMATO" {
 		t.Error("did not get expected values, got ", vals)
 	}
+
+	// Test that delete prunes
+	if !rt.Delete("torn") {
+		t.Error("did not delete \"torn\"")
+	}
+	node = rt.children['t']
+	node = node.children['o']
+	if _, ok = node.children['r']; ok {
+		t.Error("deleted leaf should have been pruned")
+	}
+
+	// Test that delete compresses
+	if !rt.Delete("tom") {
+		t.Error("did not delete \"tom\"")
+	}
+	node = rt.children['t']
+	node = node.children['o']
+	node = node.children['m']
+	if node.value == nil && len(node.children) == 1 {
+		t.Log(dump(rt))
+		t.Error("did not compress deleted node")
+	}
+	if string(node.prefix) != "ato" {
+		t.Log(dump(rt))
+		t.Error("worng prefix for compresses node: ", node.prefix)
+	}
 }
 
 func TestRunesBuildEdgeCases(t *testing.T) {
@@ -290,7 +316,7 @@ func TestRunesBuildEdgeCases(t *testing.T) {
 	}
 
 	if tree.Delete("ABCE") {
-		t.Fatal("should not delete non-existant value")
+		t.Fatal("should not delete non-existent value")
 	}
 
 	tree.Put("ABCE", 4)
@@ -298,7 +324,7 @@ func TestRunesBuildEdgeCases(t *testing.T) {
 
 	tree.Put("ABCDEFGHIJK", 5)
 	if tree.Delete("ABCDEFGH") {
-		t.Fatal("should not delete non-existant value")
+		t.Fatal("should not delete non-existent value")
 	}
 
 	for _, k := range []string{"ABCDEFGHIJK", "ABCE", "ABCDF", "ABCDE", "ABCD"} {
