@@ -21,37 +21,16 @@ type Paths struct {
 	children map[string]*Paths
 }
 
-// Len returns the number of values stored in the tree
-func (tree *Paths) Len() int {
-	if tree.value == nil {
-		return 0
-	}
-	stats := tree.value.(*treeStats)
-	return stats.values
-}
-
-// Cap returns the total number of nodes, including those without values
-func (tree *Paths) Cap() int {
-	if tree.value == nil {
-		return 0
-	}
-	stats := tree.value.(*treeStats)
-	return stats.nodes
-}
-
 // Get returns the value stored at the given key. Returns nil for internal
 // nodes or for nodes with a value of nil.
 func (tree *Paths) Get(key string) interface{} {
 	var p int
-	for part, i := pathNext(key, 0); ; part, i = pathNext(key, i) {
+	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
 		// The tree.prefix represents single-child parents without values that
 		// were compressed out of the tree. Let prefix values consume the key.
 		if p < len(tree.prefix) {
 			if part == tree.prefix[p] {
 				p++
-				if i == -1 {
-					break
-				}
 				continue
 			}
 			return nil
@@ -61,10 +40,12 @@ func (tree *Paths) Get(key string) interface{} {
 		if tree == nil {
 			return nil
 		}
-		if i == -1 {
-			break
-		}
 		p = 0
+	}
+	// Key has been consumed by traversing prefixes and/or children.  If key
+	// did not match all of this node's prefix, then did not find value.
+	if p < len(tree.prefix) {
+		return nil
 	}
 	return tree.value
 }
@@ -76,31 +57,31 @@ func (tree *Paths) Get(key string) interface{} {
 func (tree *Paths) GetPath(key string) ([]interface{}, bool) {
 	var values []interface{}
 	var p int
-	for part, i := pathNext(key, 0); ; part, i = pathNext(key, i) {
+	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
 		// The tree.prefix represents single-child parents without values that
 		// were compressed out of the tree. Let prefix values consume the key.
 		if p < len(tree.prefix) {
 			if part == tree.prefix[p] {
 				p++
-				if i == -1 {
-					break
-				}
 				continue
 			}
 			return values, false
 		}
 
+		if tree.value != nil {
+			values = append(values, tree.value)
+		}
 		tree = tree.children[part]
 		if tree == nil {
 			return values, false
 		}
-		if tree.value != nil {
-			values = append(values, tree.value)
-		}
-		if i == -1 {
-			break
-		}
 		p = 0
+	}
+	if p < len(tree.prefix) {
+		return values, false
+	}
+	if tree.value != nil {
+		values = append(values, tree.value)
 	}
 	return values, true
 }
@@ -117,25 +98,18 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 		childLink  string
 		newChild   *Paths
 		isNewValue bool
-		newNodes   int
 	)
 	node := tree
 
-	for part, next := pathNext(key, 0); ; part, next = pathNext(key, next) {
+	for part, next := pathNext(key, 0); part != ""; part, next = pathNext(key, next) {
 		if p < len(node.prefix) {
 			if part == node.prefix[p] {
 				p++
-				if next == -1 {
-					break
-				}
 				continue
 			}
 		} else if child, _ := node.children[part]; child != nil {
 			node = child
 			p = 0
-			if next == -1 {
-				break
-			}
 			continue
 		}
 		// Descended as far as prefixes and children match key, and still
@@ -175,7 +149,6 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 		}
 		node.value = nil
 		isNewValue = true
-		newNodes++
 	}
 
 	if newChild != nil {
@@ -185,7 +158,6 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 		}
 		node.children[childLink] = newChild
 		isNewValue = true
-		newNodes++
 	} else {
 		// Store key at existing child
 		if node.value == nil {
@@ -195,21 +167,6 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 		node.value = value
 	}
 
-	// Update stats if any new values or nodes.
-	if isNewValue || newNodes != 0 {
-		var stats *treeStats
-		if tree.value == nil {
-			stats = &treeStats{}
-			tree.value = stats
-		} else {
-			stats = tree.value.(*treeStats)
-		}
-		stats.nodes += newNodes
-		if isNewValue {
-			stats.values++
-		}
-	}
-
 	return isNewValue
 }
 
@@ -217,20 +174,16 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 // node was found for the given key. If the node or any of its ancestors
 // becomes childless as a result, it is removed from the tree.
 func (tree *Paths) Delete(key string) bool {
-	if len(key) == 0 {
-		return false
-	}
 	node := tree
-	var nodes []*Paths
-	var parts []string
-	var p int
-	for part, i := pathNext(key, 0); ; part, i = pathNext(key, i) {
+	var (
+		nodes []*Paths
+		parts []string
+		p     int
+	)
+	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
 		if p < len(node.prefix) {
 			if part == node.prefix[p] {
 				p++
-				if i == -1 {
-					break // no more key parts
-				}
 				continue
 			}
 			return false
@@ -243,9 +196,6 @@ func (tree *Paths) Delete(key string) bool {
 			return false
 		}
 		p = 0
-		if i == -1 {
-			break // no more key parts
-		}
 	}
 
 	// Key was not completely consumed traversing tree, so tree does not
@@ -254,7 +204,6 @@ func (tree *Paths) Delete(key string) bool {
 		return false
 	}
 	var deleted bool
-	var removed int
 	if node.value != nil {
 		// delete the node value, indicate that value was deleted
 		node.value = nil
@@ -267,7 +216,6 @@ func (tree *Paths) Delete(key string) bool {
 		for i := len(parts) - 1; i >= 0; i-- {
 			node = nodes[i]
 			delete(node.children, parts[i])
-			removed++
 			if len(node.children) != 0 {
 				// parent has other children, stop
 				break
@@ -287,18 +235,9 @@ func (tree *Paths) Delete(key string) bool {
 			node.prefix = append(node.prefix, child.prefix...)
 			node.value = child.value
 			node.children = child.children
-			removed++
 		}
 	}
 
-	// Update stats if anything changed.
-	if deleted || removed != 0 {
-		stats := tree.value.(*treeStats)
-		stats.nodes -= removed
-		if deleted {
-			stats.values--
-		}
-	}
 	return deleted
 }
 
@@ -309,40 +248,33 @@ func (tree *Paths) Delete(key string) bool {
 //
 // The tree is traversed depth-first, in no guaranteed order.
 func (tree *Paths) Walk(startKey string, walkFn WalkFunc) error {
-	if startKey == "" {
-		for part, child := range tree.children {
-			if err := child.walk(part, walkFn); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
 	// Traverse tree to get to node at key
 	var p int
-	for part, i := pathNext(startKey, 0); ; part, i = pathNext(startKey, i) {
-		if p < len(tree.prefix) && part == tree.prefix[p] {
-			p++
-			if i == -1 {
-				break
+	for part, i := pathNext(startKey, 0); part != ""; part, i = pathNext(startKey, i) {
+		if p < len(tree.prefix) {
+			if part == tree.prefix[p] {
+				p++
+				continue
 			}
-			continue
+			return nil
 		}
 		tree = tree.children[part]
 		if tree == nil {
 			return nil
 		}
-		if i == -1 {
-			break
-		}
 		p = 0
 	}
-	// Walk down tree starting at node located at key
+	if p < len(tree.prefix) {
+		return nil
+	}
+
+	// Walk down tree starting at node located at startKey
 	return tree.walk(startKey, walkFn)
 }
 
 func (tree *Paths) walk(key string, walkFn WalkFunc) error {
 	if tree.value != nil {
-		if err := walkFn(key+strings.Join(tree.prefix, ""), tree.value); err != nil {
+		if err := walkFn(key, tree.value); err != nil {
 			if err == Skip {
 				// Ignore current node's children.
 				return nil
@@ -351,7 +283,7 @@ func (tree *Paths) walk(key string, walkFn WalkFunc) error {
 		}
 	}
 	for part, child := range tree.children {
-		if err := child.walk(key+part, walkFn); err != nil {
+		if err := child.walk(key+part+strings.Join(child.prefix, ""), walkFn); err != nil {
 			return err
 		}
 	}
@@ -368,29 +300,22 @@ func (tree *Paths) walk(key string, walkFn WalkFunc) error {
 //
 // The tree is traversed depth-first, in no guaranteed order.
 func (tree *Paths) Inspect(inspectFn InspectFunc) error {
-	inspectFn("", "", "", 0, len(tree.children), "<root>")
-	return tree.inspect("", 1, inspectFn)
+	return tree.inspect("", "", 0, inspectFn)
 }
 
-func (tree *Paths) inspect(key string, depth int, inspectFn InspectFunc) error {
+func (tree *Paths) inspect(link, key string, depth int, inspectFn InspectFunc) error {
+	pfx := strings.Join(tree.prefix, "")
+	key += link + pfx
+	err := inspectFn(link, pfx, key, depth, len(tree.children), tree.value)
+	if err != nil {
+		if err == Skip {
+			// Ignore current node's children.
+			return nil
+		}
+		return err
+	}
 	for part, child := range tree.children {
-		pfx := strings.Join(child.prefix, "")
-		k := key + part + pfx
-		var ik string
-		if child.value == nil {
-			ik = ""
-		} else {
-			ik = k
-		}
-		err := inspectFn(part, pfx, ik, depth, len(child.children), child.value)
-		if err != nil {
-			if err == Skip {
-				// Ignore current node's children.
-				return nil
-			}
-			return err
-		}
-		if err = child.inspect(k, depth+1, inspectFn); err != nil {
+		if err = child.inspect(part, key, depth+1, inspectFn); err != nil {
 			return err
 		}
 	}

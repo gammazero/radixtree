@@ -5,10 +5,6 @@ import (
 	"testing"
 )
 
-func TestPathsLenCap(t *testing.T) {
-	testLenCap(t, new(Paths))
-}
-
 func TestBuildPaths(t *testing.T) {
 	// add "/L1/L2", 1
 	// (root) /L1-> ("/L2", 1)
@@ -105,8 +101,6 @@ func TestBuildPaths(t *testing.T) {
 	//                                    /L3B-> ("/L4", 3)
 	//
 	//                      /L2B-> ("L3C", 4)
-	lenBefore := tree.Len()
-	capBefore := tree.Cap()
 	tree.Put("/L1/L2B/L3C", 4)
 	t.Log(dump(tree))
 	if len(tree.children) != 1 {
@@ -148,12 +142,6 @@ func TestBuildPaths(t *testing.T) {
 	if len(node2.children) != 2 {
 		t.Fatal("expected 2 children, got ", len(node2.children))
 	}
-	if tree.Len() <= lenBefore {
-		t.Fatal("tree length should have increased")
-	}
-	if tree.Cap() <= capBefore {
-		t.Fatal("tree capacity should have increased")
-	}
 
 	// (root) /L1-> ("", _) /L2-> ("", 1) /L3A-> ("", 2)
 	//                                    /L3B-> ("/L4", 3)
@@ -164,8 +152,6 @@ func TestBuildPaths(t *testing.T) {
 	//                                    /L3B-> ("/L4", 3)
 	//
 	//                      /L2B-> ("L3C", 4)
-	lenBefore = tree.Len()
-	capBefore = tree.Cap()
 	tree.Put("/L1", 5)
 	t.Log(dump(tree))
 	if len(tree.children) != 1 {
@@ -184,12 +170,6 @@ func TestBuildPaths(t *testing.T) {
 	if len(node.children) != 2 {
 		t.Fatal("expected 2 children, got ", len(node.children))
 	}
-	if tree.Len() <= lenBefore {
-		t.Fatal("tree length should have increased")
-	}
-	if tree.Cap() != capBefore {
-		t.Fatal("tree capacity should not have changed")
-	}
 
 	// (root) /L1-> ("", 5) /L2-> ("", 1) /L3A-> ("", 2)
 	//                                    /L3B-> ("/L4", 3)
@@ -200,8 +180,6 @@ func TestBuildPaths(t *testing.T) {
 	//                                    /L3B-> ("/L4", 3)
 	//
 	//                      /L2B-> ("L3C", 4)
-	lenBefore = tree.Len()
-	capBefore = tree.Cap()
 	tree.Delete("/L1/L2")
 	t.Log(dump(tree))
 	if len(tree.children) != 1 {
@@ -221,24 +199,10 @@ func TestBuildPaths(t *testing.T) {
 	if len(node.children) != 2 {
 		t.Fatal("expected 2 children, got ", node.children)
 	}
-	if tree.Len() >= lenBefore {
-		t.Fatal("tree length should have decreased")
-	}
-	if tree.Cap() != capBefore {
-		t.Fatal("tree capacity should not have changed")
-	}
 
 	// Delete a key that does not exist
-	lenBefore = tree.Len()
-	capBefore = tree.Cap()
 	if tree.Delete("/L1/L2/L2B/L4") {
 		t.Fatal("should not have deleted non-existant key")
-	}
-	if tree.Len() != lenBefore {
-		t.Fatal("lenght changed")
-	}
-	if tree.Cap() != capBefore {
-		t.Fatal("capacity changed")
 	}
 
 	// (root) /L1-> ("", 5) /L2-> ("", _) /L3A-> ("", 2)
@@ -275,13 +239,22 @@ func TestBuildPaths(t *testing.T) {
 	if node.value != 2 {
 		t.Fatal("expected value of 2, got ", node.value)
 	}
-	if tree.Len() >= lenBefore {
-		t.Fatal("tree length should have decreased")
+
+	// (root) /L1-> ("", 5) /L2-> ("/L3A", 2)
+	//                      /L2B-> ("L3C", 4)
+	// GetPath("/L1/L2B/L3C") => 5, 4
+	vals, ok := tree.GetPath("/L1/L2B/L3C")
+	if !ok {
+		t.Error("should have found key \"/L1/L2B/L3C\"")
 	}
-	if tree.Cap() >= capBefore {
-		t.Fatal("tree capacity should have decreased")
+	if len(vals) != 2 {
+		t.Fatal("expected 2 values, got ", len(vals), vals)
+	}
+	if vals[0] != 5 || vals[1] != 4 {
+		t.Error("did not get expected values, got ", vals)
 	}
 }
+
 func TestPaths(t *testing.T) {
 	testRadixTree(t, new(Paths))
 }
@@ -291,17 +264,21 @@ func TestPathsNilGet(t *testing.T) {
 }
 
 func TestPathsRoot(t *testing.T) {
-	testRadixTreeRoot(t, new(Paths))
+	testRoot(t, new(Paths))
 }
 
 func TestPathsWalk(t *testing.T) {
-	testRadixTreeWalk(t, new(Paths))
+	testWalk(t, new(Paths))
 }
 
 func TestPathsWalkError(t *testing.T) {
-	testRadixTreeWalkError(t, new(Paths))
+	testWalkError(t, new(Paths))
 }
 
 func TestPathsWalkSkip(t *testing.T) {
-	testRadixTreeWalkSkip(t, new(Paths))
+	testWalkSkip(t, new(Paths))
+}
+
+func TestPathsInspectSkip(t *testing.T) {
+	testInspectSkip(t, new(Paths))
 }

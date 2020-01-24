@@ -15,8 +15,6 @@ type rtree interface {
 	Delete(key string) bool
 	Walk(startKey string, walkFn WalkFunc) error
 	Inspect(inspectFn InspectFunc) error
-	Len() int
-	Cap() int
 }
 
 // Use the Inspect functionality to create a function to dump the tree.
@@ -30,27 +28,6 @@ func dump(tree rtree) string {
 		return nil
 	})
 	return b.String()
-}
-
-func testLenCap(t *testing.T, tree rtree) {
-	if tree.Len() != 0 {
-		t.Error("expected Len() to be 0")
-	}
-	if tree.Cap() != 0 {
-		t.Error("expected Cap() to be 0")
-	}
-
-	tree.Put("/this", 1)
-	tree.Put("/this/is/a", 2)
-	tree.Put("/this/is/not", 3)
-	tree.Put("/this/is/not/bad", 4)
-
-	if tree.Len() != 4 {
-		t.Error("expected Len() to be 4, got ", tree.Len())
-	}
-	if tree.Cap() != 5 {
-		t.Error("expected Cap() to be 5, got ", tree.Cap())
-	}
 }
 
 func testRadixTree(t *testing.T, tree rtree) {
@@ -94,6 +71,14 @@ func testRadixTree(t *testing.T, tree rtree) {
 	}
 
 	// get path
+	t.Log(dump(tree))
+	vals, ok := tree.GetPath("bad/key")
+	if ok {
+		t.Error("should not have found node")
+	}
+	if len(vals) != 0 {
+		t.Error("should not have returned values, got ", vals)
+	}
 	lastKey := keys[len(keys)-1]
 	var expectVals []interface{}
 	for _, key := range keys {
@@ -102,7 +87,7 @@ func testRadixTree(t *testing.T, tree rtree) {
 			expectVals = append(expectVals, strings.ToUpper(key))
 		}
 	}
-	vals, ok := tree.GetPath(lastKey)
+	vals, ok = tree.GetPath(lastKey)
 	if !ok {
 		t.Fatalf("expected value for %s", lastKey)
 	}
@@ -151,10 +136,7 @@ func testNilGet(t *testing.T, tree rtree) {
 	}
 }
 
-func testRadixTreeRoot(t *testing.T, tree rtree) {
-	const putValue = "value"
-
-	t.Skip("not now")
+func testRoot(t *testing.T, tree rtree) {
 	if val := tree.Get(""); val != nil {
 		t.Errorf("expected key '' to be missing, found value %v", val)
 	}
@@ -179,7 +161,7 @@ func testRadixTreeRoot(t *testing.T, tree rtree) {
 	}
 }
 
-func testRadixTreeWalk(t *testing.T, tree rtree) {
+func testWalk(t *testing.T, tree rtree) {
 	keys := []string{
 		"bird",
 		"/rat",
@@ -191,7 +173,7 @@ func testRadixTreeWalk(t *testing.T, tree rtree) {
 		"/rat/whisperer",
 	}
 	// key -> times visited
-	visited := make(map[string]int)
+	visited := make(map[string]int, len(keys))
 	for _, key := range keys {
 		visited[key] = 0
 	}
@@ -210,8 +192,20 @@ func testRadixTreeWalk(t *testing.T, tree rtree) {
 		visited[key]++
 		return nil
 	}
-	if err := tree.Walk("", walkFn); err != nil {
-		t.Errorf("expected error nil, got %v", err)
+	// Walk key that is not stored
+	err := tree.Walk("/rat/whiz", walkFn)
+	if err != nil {
+		t.Error(err)
+	}
+	for key, visitedCount := range visited {
+		if visitedCount != 0 {
+			t.Fatalf("expected key %s to not be visited", key)
+		}
+	}
+
+	// Walk from root
+	if err = tree.Walk("", walkFn); err != nil {
+		t.Error(err)
 	}
 
 	// each key/value visited exactly once
@@ -220,9 +214,35 @@ func testRadixTreeWalk(t *testing.T, tree rtree) {
 			t.Errorf("expected key %s to be visited exactly once, got %v", key, visitedCount)
 		}
 	}
+
+	// Reset visited counts
+	for _, key := range keys {
+		visited[key] = 0
+	}
+
+	if err := tree.Walk("/rat", walkFn); err != nil {
+		t.Errorf("expected error nil, got %v", err)
+	}
+	if visited[keys[0]] != 0 {
+		t.Error(keys[0], " should not have been visited")
+	}
+	if visited[keys[2]] != 0 {
+		t.Error(keys[2], " should not have been visited")
+	}
+	// Do not tet /rats since that is visited by Runes but not Paths
+	if visited[keys[5]] != 1 {
+		t.Error(keys[5], " should have been visited")
+	}
+	if visited[keys[6]] != 1 {
+		t.Error(keys[6], " should have been visited")
+	}
+	if visited[keys[7]] != 1 {
+		t.Error(keys[7], " should have been visited")
+	}
+
 }
 
-func testRadixTreeWalkError(t *testing.T, tree rtree) {
+func testWalkError(t *testing.T, tree rtree) {
 	table := map[string]int{
 		"/L1/L2":        1,
 		"/L1/L2/L3A":    2,
@@ -252,7 +272,7 @@ func testRadixTreeWalkError(t *testing.T, tree rtree) {
 	}
 }
 
-func testRadixTreeWalkSkip(t *testing.T, tree rtree) {
+func testWalkSkip(t *testing.T, tree rtree) {
 	table := map[string]int{
 		"/L1/L2":       1,
 		"/L1/L2/L3":    555,
@@ -299,21 +319,26 @@ func testInspectSkip(t *testing.T, tree rtree) {
 		t.Log(dump(tree))
 	}
 	t.Log(dump(tree))
-	var walked int
+	var keys []string
 	inspectFn := func(link, prefix, key string, depth, children int, value interface{}) error {
+		if value == nil {
+			// Do not count internal nodes
+			return nil
+		}
+		keys = append(keys, key)
 		switch value {
 		case 555:
+			// SKip all this node's children
 			return Skip
 		case 999:
 			t.Fatal("should not get here")
 		}
-		walked++
 		return nil
 	}
 	if err := tree.Inspect(inspectFn); err != nil {
 		t.Error(err)
 	}
-	if walked != len(table)-3 {
-		t.Errorf("expected nodes walked to be %d, got %d", len(table)-3, walked)
+	if len(keys) != len(table)-2 {
+		t.Errorf("expected nodes walked to be %d, got %d: %v", len(table)-2, len(keys), keys)
 	}
 }

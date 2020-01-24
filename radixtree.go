@@ -22,10 +22,3 @@ type WalkFunc func(startKey string, value interface{}) error
 // when the function returns the special value Skip.  When the function returns
 // Skip, Inspect will not descend into any children of the current node.
 type InspectFunc func(link, prefix, key string, depth, children int, value interface{}) error
-
-// treeStats is the type used to store information about the tree in the root
-// node.
-type treeStats struct {
-	nodes  int
-	values int
-}

@@ -11,24 +11,6 @@ type Runes struct {
 	children map[rune]*Runes
 }
 
-// Len returns the number of values stored in the tree
-func (tree *Runes) Len() int {
-	if tree.value == nil {
-		return 0
-	}
-	stats := tree.value.(*treeStats)
-	return stats.values
-}
-
-// Cap returns the total number of nodes, including those without values
-func (tree *Runes) Cap() int {
-	if tree.value == nil {
-		return 0
-	}
-	stats := tree.value.(*treeStats)
-	return stats.nodes
-}
-
 // Get returns the value stored at the given key. Returns nil for internal
 // nodes or for nodes with a value of nil.
 func (tree *Runes) Get(key string) interface{} {
@@ -76,19 +58,25 @@ func (tree *Runes) GetPath(key string) ([]interface{}, bool) {
 			}
 			return values, false
 		}
+		// TODO else?
+
+		if tree.value != nil {
+			values = append(values, tree.value)
+		}
 
 		tree = tree.children[r]
 		if tree == nil {
 			return values, false
 		}
-
-		if tree.value != nil {
-			values = append(values, tree.value)
-		}
 		p = 0
 	}
-	// If key did not match all of this node's prefix, then did not find value.
-	return values, p == len(tree.prefix)
+	if p < len(tree.prefix) {
+		return values, false
+	}
+	if tree.value != nil {
+		values = append(values, tree.value)
+	}
+	return values, true
 }
 
 // Put inserts the value into the tree at the given key, replacing any
@@ -103,7 +91,6 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 		childLink  rune
 		newChild   *Runes
 		isNewValue bool
-		newNodes   int
 	)
 	node := tree
 
@@ -126,7 +113,6 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 		}
 		if i < len(key)-1 {
 			newChild.prefix = []rune(key[i+1:])
-		} else {
 		}
 		childLink = r
 		value = nil // value stored in newChild, not in node
@@ -152,7 +138,6 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 		}
 		node.value = nil
 		isNewValue = true
-		newNodes++
 	}
 
 	if newChild != nil {
@@ -161,28 +146,12 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 		}
 		node.children[childLink] = newChild
 		isNewValue = true
-		newNodes++
 	} else {
 		if node.value == nil {
 			// Filled in value of existing internal node
 			isNewValue = true
 		}
 		node.value = value
-	}
-
-	// Update stats is any new values or nodes.
-	if isNewValue || newNodes != 0 {
-		var stats *treeStats
-		if tree.value == nil {
-			stats = &treeStats{}
-			tree.value = stats
-		} else {
-			stats = tree.value.(*treeStats)
-		}
-		stats.nodes += newNodes
-		if isNewValue {
-			stats.values++
-		}
 	}
 
 	return isNewValue
@@ -194,13 +163,12 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 // of the node's ancestors becomes childless as a result, they are also removed
 // from the tree.
 func (tree *Runes) Delete(key string) bool {
-	if len(key) == 0 {
-		return false
-	}
 	node := tree
-	var nodes []*Runes
-	var runes []rune
-	var p int
+	var (
+		nodes []*Runes
+		runes []rune
+		p     int
+	)
 	for _, r := range key {
 		if p < len(node.prefix) {
 			if r == node.prefix[p] {
@@ -225,7 +193,6 @@ func (tree *Runes) Delete(key string) bool {
 		return false
 	}
 	var deleted bool
-	var removed int
 	if node.value != nil {
 		// delete the node value, indicate that value was deleted
 		node.value = nil
@@ -238,7 +205,6 @@ func (tree *Runes) Delete(key string) bool {
 		for i := len(runes) - 1; i >= 0; i-- {
 			node = nodes[i]
 			delete(node.children, runes[i])
-			removed++
 			if len(node.children) != 0 {
 				// parent has other children, stop
 				break
@@ -258,17 +224,9 @@ func (tree *Runes) Delete(key string) bool {
 			node.prefix = append(node.prefix, child.prefix...)
 			node.value = child.value
 			node.children = child.children
-			removed++
 		}
 	}
 
-	if deleted || removed != 0 {
-		stats := tree.value.(*treeStats)
-		stats.nodes -= removed
-		if deleted {
-			stats.values--
-		}
-	}
 	return deleted
 }
 
@@ -282,9 +240,12 @@ func (tree *Runes) Walk(startKey string, walkFn WalkFunc) error {
 	// Traverse tree to get to node at key
 	var p int
 	for _, r := range startKey {
-		if p < len(tree.prefix) && r == tree.prefix[p] {
-			p++
-			continue
+		if p < len(tree.prefix) {
+			if r == tree.prefix[p] {
+				p++
+				continue
+			}
+			return nil
 		}
 		tree = tree.children[r]
 		if tree == nil {
@@ -292,12 +253,15 @@ func (tree *Runes) Walk(startKey string, walkFn WalkFunc) error {
 		}
 		p = 0
 	}
+	if p < len(tree.prefix) {
+		return nil
+	}
 	// Walk down tree starting at node located at key
 	return tree.walk(startKey, walkFn)
 }
 
 func (tree *Runes) walk(key string, walkFn WalkFunc) error {
-	if len(key) != 0 && tree.value != nil {
+	if tree.value != nil {
 		if err := walkFn(key, tree.value); err != nil {
 			if err == Skip {
 				// Ignore current node's children.
@@ -307,9 +271,7 @@ func (tree *Runes) walk(key string, walkFn WalkFunc) error {
 		}
 	}
 	for r, child := range tree.children {
-		k := key + string(r) + string(child.prefix)
-		err := child.walk(k, walkFn)
-		if err != nil {
+		if err := child.walk(key+string(r)+string(child.prefix), walkFn); err != nil {
 			return err
 		}
 	}
@@ -326,27 +288,22 @@ func (tree *Runes) walk(key string, walkFn WalkFunc) error {
 //
 // The tree is traversed depth-first, in no guaranteed order.
 func (tree *Runes) Inspect(inspectFn InspectFunc) error {
-	inspectFn("", "", "", 0, len(tree.children), "<root>")
-	return tree.inspect("", 1, inspectFn)
+	return tree.inspect("", "", 0, inspectFn)
 }
 
-func (tree *Runes) inspect(key string, depth int, inspectFn InspectFunc) error {
+func (tree *Runes) inspect(link, key string, depth int, inspectFn InspectFunc) error {
+	pfx := string(tree.prefix)
+	key += link + pfx
+	err := inspectFn(link, pfx, key, depth, len(tree.children), tree.value)
+	if err != nil {
+		if err == Skip {
+			// Ignore current node's children.
+			return nil
+		}
+		return err
+	}
 	for r, child := range tree.children {
-		k := key + string(r) + string(child.prefix)
-		var ik string
-		if child.value == nil {
-			ik = ""
-		} else {
-			ik = k
-		}
-		if err := inspectFn(string(r), string(child.prefix), ik, depth, len(child.children), child.value); err != nil {
-			if err == Skip {
-				// Ignore current node's children.
-				return nil
-			}
-			return err
-		}
-		if err := child.inspect(k, depth+1, inspectFn); err != nil {
+		if err = child.inspect(string(r), key, depth+1, inspectFn); err != nil {
 			return err
 		}
 	}

@@ -4,10 +4,6 @@ import (
 	"testing"
 )
 
-func TestRunesLenCap(t *testing.T) {
-	testLenCap(t, new(Runes))
-}
-
 func TestBuildRunes(t *testing.T) {
 	rt := new(Runes)
 	rt.Put("tomato", "TOMATO")
@@ -261,6 +257,21 @@ func TestBuildRunes(t *testing.T) {
 	if node3 = node2.children['r']; node3 == nil {
 		t.Fatal("node should have child at 'r'")
 	}
+
+	// (root) t-> ("", _) o-> ("", TO) m-> ("", TOM) a-> ("to", TOMATO)
+	//                                 r-> ("n", TORN)
+	//                    a-> ("g", TAG)
+	// GetPath("tomato") => TO, TOM, TOMATO
+	vals, ok := rt.GetPath("tomato")
+	if !ok {
+		t.Error("should have found key \"tomato\"")
+	}
+	if len(vals) != 3 {
+		t.Fatal("expected 3 values, got", len(vals), vals)
+	}
+	if vals[0] != "TO" || vals[1] != "TOM" || vals[2] != "TOMATO" {
+		t.Error("did not get expected values, got ", vals)
+	}
 }
 
 func TestRunesBuildEdgeCases(t *testing.T) {
@@ -411,17 +422,21 @@ func TestRunesNilGet(t *testing.T) {
 }
 
 func TestRunesRoot(t *testing.T) {
-	testRadixTreeRoot(t, new(Runes))
+	testRoot(t, new(Runes))
 }
 
 func TestRunesWalk(t *testing.T) {
-	testRadixTreeWalk(t, new(Runes))
+	testWalk(t, new(Runes))
 }
 
 func TestRunesWalkError(t *testing.T) {
-	testRadixTreeWalkError(t, new(Runes))
+	testWalkError(t, new(Runes))
 }
 
 func TestRunesWalkSkip(t *testing.T) {
-	testRadixTreeWalkSkip(t, new(Runes))
+	testWalkSkip(t, new(Runes))
+}
+
+func TestRunesInspectSkip(t *testing.T) {
+	testInspectSkip(t, new(Runes))
 }
