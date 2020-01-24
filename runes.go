@@ -230,34 +230,41 @@ func (tree *Runes) Delete(key string) bool {
 	return deleted
 }
 
-// Walk walks the tree starting at startKey ("" to start at root), calling
-// walkFn for each value found, including at key. If walkFn returns an error,
-// the walk is aborted. If walkFn returns Skip, Walk will not descend into the
-// node's children.
+// Walk walks the radix tree rooted at root ("" to start at root or tree),
+// calling walkFn for each value found. If walkFn returns an error, the walk is
+// aborted. If walkFn returns Skip, Walk will not descend into the node's
+// children.
 //
 // The tree is traversed depth-first, in no guaranteed order.
-func (tree *Runes) Walk(startKey string, walkFn WalkFunc) error {
-	// Traverse tree to get to node at key
-	var p int
-	for _, r := range startKey {
-		if p < len(tree.prefix) {
-			if r == tree.prefix[p] {
-				p++
-				continue
+func (tree *Runes) Walk(root string, walkFn WalkFunc) error {
+	if root != "" {
+		// Traverse tree to get to node at key
+		var p int
+		for _, r := range root {
+			if p < len(tree.prefix) {
+				if r == tree.prefix[p] {
+					p++
+					continue
+				}
+				return nil
 			}
+			tree = tree.children[r]
+			if tree == nil {
+				return nil
+			}
+			p = 0
+		}
+		if p < len(tree.prefix) {
 			return nil
 		}
-		tree = tree.children[r]
-		if tree == nil {
+		// Root is not valid unless a value was stores there
+		if tree.value == nil {
 			return nil
 		}
-		p = 0
 	}
-	if p < len(tree.prefix) {
-		return nil
-	}
-	// Walk down tree starting at node located at key
-	return tree.walk(startKey, walkFn)
+
+	// Walk down tree starting at node located at root
+	return tree.walk(root, walkFn)
 }
 
 func (tree *Runes) walk(key string, walkFn WalkFunc) error {

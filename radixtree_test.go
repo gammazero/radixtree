@@ -171,6 +171,9 @@ func testWalk(t *testing.T, tree rtree) {
 		"/rat/whiskey",
 		"/rat/whiskers",
 		"/rat/whisperer",
+		"/rat/winks/wisely/once",
+		"/rat/winks/wisely/x/y/z",
+		"/rat/winks/wryly",
 	}
 	// key -> times visited
 	visited := make(map[string]int, len(keys))
@@ -197,8 +200,35 @@ func testWalk(t *testing.T, tree rtree) {
 	if err != nil {
 		t.Error(err)
 	}
+	if err = tree.Walk("/rat/whis", walkFn); err != nil {
+		t.Error(err)
+	}
+	if err = tree.Walk("/rat/whisper", walkFn); err != nil {
+		t.Error(err)
+	}
+	if err = tree.Walk("/rat/whiskey/shot", walkFn); err != nil {
+		t.Error(err)
+	}
+	if err = tree.Walk("/rat/winks", walkFn); err != nil {
+		t.Error(err)
+	}
+	if err = tree.Walk("/rat/winks/wisely", walkFn); err != nil {
+		t.Error(err)
+	}
+	if err = tree.Walk("/rat/winks/wisely/x/y", walkFn); err != nil {
+		t.Error(err)
+	}
+	if err = tree.Walk("/rat/winks/wisely/x/w", walkFn); err != nil {
+		t.Error(err)
+	}
+	if err = tree.Walk("/rat/winks/wisely/only", walkFn); err != nil {
+		t.Error(err)
+	}
+	t.Log(dump(tree))
+
 	for key, visitedCount := range visited {
 		if visitedCount != 0 {
+			t.Log(dump(tree))
 			t.Fatalf("expected key %s to not be visited", key)
 		}
 	}
@@ -229,7 +259,7 @@ func testWalk(t *testing.T, tree rtree) {
 	if visited[keys[2]] != 0 {
 		t.Error(keys[2], " should not have been visited")
 	}
-	// Do not tet /rats since that is visited by Runes but not Paths
+	// Do not test /rats since that is visited by Runes but not Paths
 	if visited[keys[5]] != 1 {
 		t.Error(keys[5], " should have been visited")
 	}
@@ -240,6 +270,28 @@ func testWalk(t *testing.T, tree rtree) {
 		t.Error(keys[7], " should have been visited")
 	}
 
+	// Reset visited counts
+	for _, key := range keys {
+		visited[key] = 0
+	}
+
+	if err := tree.Walk("/rat/whiskers", walkFn); err != nil {
+		t.Errorf("expected error nil, got %v", err)
+	}
+	for i, key := range keys {
+		if i == 6 {
+			continue
+		}
+		if visited[key] != 0 {
+			t.Log(dump(tree))
+			t.Error(key, " should not have been visited")
+		}
+	}
+	// Do not test /rats since that is visited by Runes but not Paths
+	if visited[keys[6]] != 1 {
+		t.Log(dump(tree))
+		t.Error(keys[6], " should have been visited")
+	}
 }
 
 func testWalkError(t *testing.T, tree rtree) {
@@ -318,7 +370,6 @@ func testInspectSkip(t *testing.T, tree rtree) {
 		tree.Put(key, value)
 		t.Log(dump(tree))
 	}
-	t.Log(dump(tree))
 	var keys []string
 	inspectFn := func(link, prefix, key string, depth, children int, value interface{}) error {
 		if value == nil {
