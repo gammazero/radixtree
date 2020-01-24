@@ -135,7 +135,9 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 		isNewValue = true
 	} else {
 		// Store key at existing child
-		isNewValue = node.value == nil
+		if node.value == nil {
+			isNewValue = true
+		}
 		node.value = value
 	}
 
@@ -146,21 +148,21 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 //     ("prefix", "value", child[..])
 // is split into parent branching node, and a child value node:
 //     ("pre", "", [-])--->("fix", "value", [..])
-func (node *Runes) split(p int) {
+func (tree *Runes) split(p int) {
 	split := &Runes{
-		children: node.children,
-		value:    node.value,
+		children: tree.children,
+		value:    tree.value,
 	}
-	if p < len(node.prefix)-1 {
-		split.prefix = node.prefix[p+1:]
+	if p < len(tree.prefix)-1 {
+		split.prefix = tree.prefix[p+1:]
 	}
-	node.children = map[rune]*Runes{node.prefix[p]: split}
+	tree.children = map[rune]*Runes{tree.prefix[p]: split}
 	if p == 0 {
-		node.prefix = nil
+		tree.prefix = nil
 	} else {
-		node.prefix = node.prefix[:p]
+		tree.prefix = tree.prefix[:p]
 	}
-	node.value = nil
+	tree.value = nil
 }
 
 // Delete removes the value associated with the given key. Returns true if a
@@ -214,36 +216,36 @@ func (tree *Runes) Delete(key string) bool {
 	return deleted
 }
 
-func (node *Runes) prune(parents []*Runes, links []rune) *Runes {
-	if node.children != nil {
-		return node
+func (tree *Runes) prune(parents []*Runes, links []rune) *Runes {
+	if tree.children != nil {
+		return tree
 	}
-	// iterate parents towards root of tree, removine the empty leaf node
+	// iterate parents towards root of tree, removine the empty leaf
 	for i := len(links) - 1; i >= 0; i-- {
-		node = parents[i]
-		delete(node.children, links[i])
-		if len(node.children) != 0 {
+		tree = parents[i]
+		delete(tree.children, links[i])
+		if len(tree.children) != 0 {
 			// parent has other children, stop
 			break
 		}
-		node.children = nil
-		if node.value != nil {
+		tree.children = nil
+		if tree.value != nil {
 			// parent has a value, stop
 			break
 		}
 	}
-	return node
+	return tree
 }
 
-func (node *Runes) compress() {
-	if len(node.children) != 1 || node.value != nil {
+func (tree *Runes) compress() {
+	if len(tree.children) != 1 || tree.value != nil {
 		return
 	}
-	for r, child := range node.children {
-		node.prefix = append(node.prefix, r)
-		node.prefix = append(node.prefix, child.prefix...)
-		node.value = child.value
-		node.children = child.children
+	for r, child := range tree.children {
+		tree.prefix = append(tree.prefix, r)
+		tree.prefix = append(tree.prefix, child.prefix...)
+		tree.value = child.value
+		tree.children = child.children
 	}
 }
 

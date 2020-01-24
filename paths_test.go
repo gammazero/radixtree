@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestBuildPaths(t *testing.T) {
+func TestPathsAddEnd(t *testing.T) {
 	// add "/L1/L2", 1
 	// (root) /L1-> ("/L2", 1)
 	tree := new(Paths)
@@ -62,6 +62,12 @@ func TestBuildPaths(t *testing.T) {
 	if len(node.children) != 0 {
 		t.Fatal("expected no children")
 	}
+}
+
+func TestPathsAddBranch(t *testing.T) {
+	tree := new(Paths)
+	tree.Put("/L1/L2", 1)
+	tree.Put("/L1/L2/L3A", 2)
 
 	// (root) /L1-> ("/L2", 1) /L3A-> ("", 2)
 	// add "/L1/L2/L3B/L4", 3
@@ -72,7 +78,7 @@ func TestBuildPaths(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node = tree.children["/L1"]
+	node := tree.children["/L1"]
 	if node == nil {
 		t.Fatal("expected child at '/L1'")
 	}
@@ -93,6 +99,13 @@ func TestBuildPaths(t *testing.T) {
 	if node2 == nil {
 		t.Fatal("expected child at '/L3A'")
 	}
+}
+
+func TestPathsAddBranchToBranch(t *testing.T) {
+	tree := new(Paths)
+	tree.Put("/L1/L2", 1)
+	tree.Put("/L1/L2/L3A", 2)
+	tree.Put("/L1/L2/L3B/L4", 3)
 
 	// (root) /L1-> ("/L2", 1) /L3A-> ("", 2)
 	//                         /L3B-> ("/L4", 3)
@@ -106,7 +119,7 @@ func TestBuildPaths(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node = tree.children["/L1"]
+	node := tree.children["/L1"]
 	if node == nil {
 		t.Fatal("expected child at '/L1'")
 	}
@@ -119,7 +132,7 @@ func TestBuildPaths(t *testing.T) {
 	if len(node.children) != 2 {
 		t.Fatal("expected 2 children, got ", len(node.children))
 	}
-	node2 = node.children["/L2B"]
+	node2 := node.children["/L2B"]
 	if node2 == nil {
 		t.Fatal("Expected child at '/L2B'")
 	}
@@ -142,6 +155,14 @@ func TestBuildPaths(t *testing.T) {
 	if len(node2.children) != 2 {
 		t.Fatal("expected 2 children, got ", len(node2.children))
 	}
+}
+
+func TestPathsAddExisting(t *testing.T) {
+	tree := new(Paths)
+	tree.Put("/L1/L2", 1)
+	tree.Put("/L1/L2/L3A", 2)
+	tree.Put("/L1/L2/L3B/L4", 3)
+	tree.Put("/L1/L2B/L3C", 4)
 
 	// (root) /L1-> ("", _) /L2-> ("", 1) /L3A-> ("", 2)
 	//                                    /L3B-> ("/L4", 3)
@@ -157,7 +178,7 @@ func TestBuildPaths(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node = tree.children["/L1"]
+	node := tree.children["/L1"]
 	if node == nil {
 		t.Fatal("expected child at '/L1'")
 	}
@@ -170,6 +191,15 @@ func TestBuildPaths(t *testing.T) {
 	if len(node.children) != 2 {
 		t.Fatal("expected 2 children, got ", len(node.children))
 	}
+}
+
+func TestPathsDelete(t *testing.T) {
+	tree := new(Paths)
+	tree.Put("/L1/L2", 1)
+	tree.Put("/L1/L2/L3A", 2)
+	tree.Put("/L1/L2/L3B/L4", 3)
+	tree.Put("/L1/L2B/L3C", 4)
+	tree.Put("/L1", 5)
 
 	// (root) /L1-> ("", 5) /L2-> ("", 1) /L3A-> ("", 2)
 	//                                    /L3B-> ("/L4", 3)
@@ -185,7 +215,7 @@ func TestBuildPaths(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node = tree.children["/L1"]
+	node := tree.children["/L1"]
 	if node == nil {
 		t.Fatal("expected child at '/L1'")
 	}
@@ -240,26 +270,12 @@ func TestBuildPaths(t *testing.T) {
 		t.Fatal("expected value of 2, got ", node.value)
 	}
 
-	// (root) /L1-> ("", 5) /L2-> ("/L3A", 2)
-	//                      /L2B-> ("L3C", 4)
-	// GetPath("/L1/L2B/L3C") => 5, 4
-	vals, ok := tree.GetPath("/L1/L2B/L3C")
-	if !ok {
-		t.Error("should have found key \"/L1/L2B/L3C\"")
-	}
-	if len(vals) != 2 {
-		t.Fatal("expected 2 values, got ", len(vals), vals)
-	}
-	if vals[0] != 5 || vals[1] != 4 {
-		t.Error("did not get expected values, got ", vals)
-	}
-
 	// Test that Delete prunes
 	if !tree.Delete("/L1/L2B/L3C") {
 		t.Error("did not delete \"/L1/L2B/L3C\"")
 	}
 	node = tree.children["/L1"]
-	if _, ok = node.children["/L2B"]; ok {
+	if _, ok := node.children["/L2B"]; ok {
 		t.Log(dump(tree))
 		t.Error("deleted leaf should have been pruned")
 	}
@@ -275,6 +291,32 @@ func TestBuildPaths(t *testing.T) {
 	if strings.Join(node.prefix, "") != "/L2/L3A" {
 		t.Log(dump(tree))
 		t.Error("worng prefix for compresses node:", strings.Join(node.prefix, ""))
+	}
+}
+
+func TestPathsGetPath(t *testing.T) {
+	tree := new(Paths)
+	tree.Put("/L1/L2", 1)
+	tree.Put("/L1/L2/L3A", 2)
+	tree.Put("/L1/L2/L3B/L4", 3)
+	tree.Put("/L1/L2B/L3C", 4)
+	tree.Put("/L1", 5)
+
+	// (root) /L1-> ("", 5) /L2-> ("", 1) /L3A-> ("", 2)
+	//                                    /L3B-> ("/L4", 3)
+	//
+	//                      /L2B-> ("L3C", 4)
+	//
+	// GetPath("/L1/L2B/L3C") => 5, 4
+	vals, ok := tree.GetPath("/L1/L2B/L3C")
+	if !ok {
+		t.Error("should have found key \"/L1/L2B/L3C\"")
+	}
+	if len(vals) != 2 {
+		t.Fatal("expected 2 values, got ", len(vals), vals)
+	}
+	if vals[0] != 5 || vals[1] != 4 {
+		t.Error("did not get expected values, got ", vals)
 	}
 }
 

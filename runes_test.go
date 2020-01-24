@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestBuildRunes(t *testing.T) {
+func TestRunesAddEnd(t *testing.T) {
 	rt := new(Runes)
 	rt.Put("tomato", "TOMATO")
 	if len(rt.children) != 1 {
@@ -59,8 +59,10 @@ func TestBuildRunes(t *testing.T) {
 		t.Fatal("node should have no children")
 	}
 	t.Log(dump(rt))
+}
 
-	rt = new(Runes)
+func TestRunesAddFront(t *testing.T) {
+	rt := new(Runes)
 	rt.Put("tom", "TOM")
 	t.Log(dump(rt))
 	// (root) t-> ("om", TOM)
@@ -72,7 +74,7 @@ func TestBuildRunes(t *testing.T) {
 	if len(rt.children) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node = rt.children['t']
+	node := rt.children['t']
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -98,18 +100,25 @@ func TestBuildRunes(t *testing.T) {
 	if len(node.children) != 0 {
 		t.Fatal("node should have no children")
 	}
+}
+
+func TestRunesAddBranch(t *testing.T) {
+	rt := new(Runes)
+	rt.Put("tom", "TOM")
+	rt.Put("tomato", "TOMATO")
 
 	// (root) t-> ("om", TOM) a-> ("to", TOMATO)
 	// then add "torn", TORN
 	// (root) t-> ("o", _) m-> ("", TOM) a-> ("to", TOMATO)
 	//                     r-> ("n", TORN)
+	t.Log(dump(rt))
 	t.Log("... add \"torn\", TORN ...")
 	rt.Put("torn", "TORN")
 	t.Log(dump(rt))
 	if len(rt.children) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node = rt.children['t']
+	node := rt.children['t']
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -161,6 +170,13 @@ func TestBuildRunes(t *testing.T) {
 	if len(node2.children) != 0 {
 		t.Fatal("node should have no children")
 	}
+}
+
+func TestRunesAddBranchToBranch(t *testing.T) {
+	rt := new(Runes)
+	rt.Put("tom", "TOM")
+	rt.Put("tomato", "TOMATO")
+	rt.Put("torn", "TORN")
 
 	// (root) t-> ("o", _) m-> ("", TOM) a-> ("to", TOMATO)
 	//                     r-> ("n", TORN)
@@ -174,7 +190,7 @@ func TestBuildRunes(t *testing.T) {
 	if len(rt.children) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node = rt.children['t']
+	node := rt.children['t']
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -187,7 +203,7 @@ func TestBuildRunes(t *testing.T) {
 	if len(node.children) != 2 {
 		t.Fatal("node should have 2 children")
 	}
-	node2 = node.children['o']
+	node2 := node.children['o']
 	if node2 == nil {
 		t.Fatal("node should have child at 'm'")
 	}
@@ -207,6 +223,14 @@ func TestBuildRunes(t *testing.T) {
 	if node2.value != "TAG" {
 		t.Fatal("expected value 'TAG', got:", node2.value)
 	}
+}
+
+func TestRunesAddExisting(t *testing.T) {
+	rt := new(Runes)
+	rt.Put("tom", "TOM")
+	rt.Put("tomato", "TOMATO")
+	rt.Put("torn", "TORN")
+	rt.Put("tag", "TAG")
 
 	// (root) t-> ("", _) o-> ("", _) m-> ("", TOM) a-> ("to", TOMATO)
 	//                                r-> ("n", TORN)
@@ -221,7 +245,7 @@ func TestBuildRunes(t *testing.T) {
 	if len(rt.children) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node = rt.children['t']
+	node := rt.children['t']
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -234,7 +258,7 @@ func TestBuildRunes(t *testing.T) {
 	if len(node.children) != 2 {
 		t.Fatal("node should have 2 children")
 	}
-	node2 = node.children['a']
+	node2 := node.children['a']
 	if node2 == nil {
 		t.Fatal("node should have child at 'a'")
 	}
@@ -251,12 +275,22 @@ func TestBuildRunes(t *testing.T) {
 	if len(node2.children) != 2 {
 		t.Fatal("node should have 2 children")
 	}
-	if node3 = node2.children['m']; node3 == nil {
+	node3 := node2.children['m']
+	if node3 == nil {
 		t.Fatal("node should have child at 'm'")
 	}
 	if node3 = node2.children['r']; node3 == nil {
 		t.Fatal("node should have child at 'r'")
 	}
+}
+
+func TestRunesGetPath(t *testing.T) {
+	rt := new(Runes)
+	rt.Put("tom", "TOM")
+	rt.Put("tomato", "TOMATO")
+	rt.Put("torn", "TORN")
+	rt.Put("tag", "TAG")
+	rt.Put("to", "TO")
 
 	// (root) t-> ("", _) o-> ("", TO) m-> ("", TOM) a-> ("to", TOMATO)
 	//                                 r-> ("n", TORN)
@@ -272,14 +306,23 @@ func TestBuildRunes(t *testing.T) {
 	if vals[0] != "TO" || vals[1] != "TOM" || vals[2] != "TOMATO" {
 		t.Error("did not get expected values, got ", vals)
 	}
+}
+
+func TestRunesDelete(t *testing.T) {
+	rt := new(Runes)
+	rt.Put("tom", "TOM")
+	rt.Put("tomato", "TOMATO")
+	rt.Put("torn", "TORN")
+	rt.Put("tag", "TAG")
+	rt.Put("to", "TO")
 
 	// Test that delete prunes
 	if !rt.Delete("torn") {
 		t.Error("did not delete \"torn\"")
 	}
-	node = rt.children['t']
+	node := rt.children['t']
 	node = node.children['o']
-	if _, ok = node.children['r']; ok {
+	if _, ok := node.children['r']; ok {
 		t.Error("deleted leaf should have been pruned")
 	}
 

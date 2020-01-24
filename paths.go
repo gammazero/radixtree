@@ -148,7 +148,9 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 		isNewValue = true
 	} else {
 		// Store key at existing child
-		isNewValue = node.value == nil
+		if node.value == nil {
+			isNewValue = true
+		}
 		node.value = value
 	}
 
@@ -159,21 +161,21 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 //     ("pre/fix", "value", child[..])
 // is split into parent branching node, and a child value node:
 //     ("pre/", "", [-])--->("fix/", "value", [..])
-func (node *Paths) split(p int) {
+func (tree *Paths) split(p int) {
 	split := &Paths{
-		children: node.children,
-		value:    node.value,
+		children: tree.children,
+		value:    tree.value,
 	}
-	if p < len(node.prefix)-1 {
-		split.prefix = node.prefix[p+1:]
+	if p < len(tree.prefix)-1 {
+		split.prefix = tree.prefix[p+1:]
 	}
-	node.children = map[string]*Paths{node.prefix[p]: split}
+	tree.children = map[string]*Paths{tree.prefix[p]: split}
 	if p == 0 {
-		node.prefix = nil
+		tree.prefix = nil
 	} else {
-		node.prefix = node.prefix[:p]
+		tree.prefix = tree.prefix[:p]
 	}
-	node.value = nil
+	tree.value = nil
 }
 
 // Delete removes the value associated with the given key. Returns true if a
@@ -225,36 +227,36 @@ func (tree *Paths) Delete(key string) bool {
 	return deleted
 }
 
-func (node *Paths) prune(parents []*Paths, links []string) *Paths {
-	if node.children != nil {
-		return node
+func (tree *Paths) prune(parents []*Paths, links []string) *Paths {
+	if tree.children != nil {
+		return tree
 	}
-	// iterate parents towards root of tree, removing the empty leaf node
+	// iterate parents towards root of tree, removing the empty leaf
 	for i := len(links) - 1; i >= 0; i-- {
-		node = parents[i]
-		delete(node.children, links[i])
-		if len(node.children) != 0 {
+		tree = parents[i]
+		delete(tree.children, links[i])
+		if len(tree.children) != 0 {
 			// parent has other children, stop
 			break
 		}
-		node.children = nil
-		if node.value != nil {
+		tree.children = nil
+		if tree.value != nil {
 			// parent has a value, stop
 			break
 		}
 	}
-	return node
+	return tree
 }
 
-func (node *Paths) compress() {
-	if len(node.children) != 1 || node.value != nil {
+func (tree *Paths) compress() {
+	if len(tree.children) != 1 || tree.value != nil {
 		return
 	}
-	for part, child := range node.children {
-		node.prefix = append(node.prefix, part)
-		node.prefix = append(node.prefix, child.prefix...)
-		node.value = child.value
-		node.children = child.children
+	for part, child := range tree.children {
+		tree.prefix = append(tree.prefix, part)
+		tree.prefix = append(tree.prefix, child.prefix...)
+		tree.value = child.value
+		tree.children = child.children
 	}
 }
 
