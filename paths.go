@@ -30,16 +30,16 @@ type PathsIterator struct {
 	node *Paths
 }
 
-// NewIterator return a new PathsIterator instance that begins iterating
-// from the root of the given tree.
+// NewIterator returns a new PathsIterator instance that begins iterating
+// from the root of the tree.
 func (tree *Paths) NewIterator() *PathsIterator {
 	return &PathsIterator{
 		node: tree,
 	}
 }
 
-// Copy copeis the current iterator into a new iterator.  This allows branching
-// an iterator into two iterators that can take separate parths.
+// Copy makes a copy of the current iterator.  This allows branching an
+// iterator into two iterators that can take separate paths.
 func (it *PathsIterator) Copy() *PathsIterator {
 	return &PathsIterator{
 		p:    it.p,

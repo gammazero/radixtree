@@ -20,16 +20,16 @@ type RunesIterator struct {
 	node *Runes
 }
 
-// NewRunesIterator return a new RunesIterator instance that begins iterating
-// from the root of the given tree.
+// NewIterator returns a new RunesIterator instance that begins iterating from
+// the root of the tree.
 func (tree *Runes) NewIterator() *RunesIterator {
 	return &RunesIterator{
 		node: tree,
 	}
 }
 
-// Copy copeis the current iterator into a new iterator.  This allows branching
-// an iterator into two iterators that can take separate parths.
+// Copy makes a copy of the current iterator.  This allows branching an
+// iterator into two iterators that can take separate paths.
 func (it *RunesIterator) Copy() *RunesIterator {
 	return &RunesIterator{
 		p:    it.p,
@@ -252,7 +252,7 @@ func (tree *Runes) prune(parents []*Runes, links []rune) *Runes {
 	if tree.children != nil {
 		return tree
 	}
-	// iterate parents towards root of tree, removine the empty leaf
+	// iterate parents towards root of tree, removing the empty leaf
 	for i := len(links) - 1; i >= 0; i-- {
 		tree = parents[i]
 		delete(tree.children, links[i])

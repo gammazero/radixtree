@@ -9,6 +9,8 @@ Package `radixtree` implements multiple forms of an Adaptive [Radix Tree](https:
 
 The implementations are optimized for Get performance and allocate 0 bytes of heap memory per Get; therefore no garbage to collect.  Once the radix tree is build, it can be repeatedly searched very quickly.
 
+An iterator for each type of radix tree allows a tree to be traversed one key segment at a time.  This is useful for incremental lookups of partial keys.
+
 Access is not synchronized (not concurrent safe), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
 
 [![GoDoc](https://godoc.org/github.com/gammazero/radixtree?status.svg)](https://godoc.org/github.com/gammazero/radixtree)
