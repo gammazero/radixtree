@@ -22,33 +22,77 @@ type Paths struct {
 	children map[string]*Paths
 }
 
+// PathsIterator traverses a Paths radix tree one path segment at a time.
+//
+// Note: Any modification to the tree invalidates the iterator.
+type PathsIterator struct {
+	p    int
+	node *Paths
+}
+
+// NewIterator return a new PathsIterator instance that begins iterating
+// from the root of the given tree.
+func (tree *Paths) NewIterator() *PathsIterator {
+	return &PathsIterator{
+		node: tree,
+	}
+}
+
+// Copy copeis the current iterator into a new iterator.  This allows branching
+// an iterator into two iterators that can take separate parths.
+func (it *PathsIterator) Copy() *PathsIterator {
+	return &PathsIterator{
+		p:    it.p,
+		node: it.node,
+	}
+}
+
+// Next advances the iterator from its current position, to the position of
+// given path segment in the tree, so long as the given segment is next in a
+// path in the tree.  If the segment allows the iterator to advance, then true
+// is returned.  Otherwise false is returned.
+//
+// When false is returned the iterator is not modified. This allows different
+// values to be used, in subsequent calls to Next, to advance the iterator from
+// its current position.
+//
+// Any part subsequent to the first, must begin with the PathSeparator.
+func (pi *PathsIterator) Next(part string) bool {
+	if pi.p < len(pi.node.prefix) {
+		if part == pi.node.prefix[pi.p] {
+			pi.p++
+			return true
+		}
+		return false
+	}
+	node := pi.node.children[part]
+	if node == nil {
+		return false
+	}
+	pi.p = 0
+	pi.node = node
+	return true
+}
+
+// Value returns the value at the current iterator position, or nil if there is
+// no value at the position.
+func (pi *PathsIterator) Value() interface{} {
+	if pi.p != len(pi.node.prefix) {
+		return nil
+	}
+	return pi.node.value
+}
+
 // Get returns the value stored at the given key. Returns nil for internal
 // nodes or for nodes with a value of nil.
 func (tree *Paths) Get(key string) interface{} {
-	var p int
+	iter := tree.NewIterator()
 	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
-		// The tree.prefix represents single-child parents without values that
-		// were compressed out of the tree. Let prefix values consume the key.
-		if p < len(tree.prefix) {
-			if part == tree.prefix[p] {
-				p++
-				continue
-			}
+		if !iter.Next(part) {
 			return nil
 		}
-
-		tree = tree.children[part]
-		if tree == nil {
-			return nil
-		}
-		p = 0
 	}
-	// Key has been consumed by traversing prefixes and/or children.  If key
-	// did not match all of this node's prefix, then did not find value.
-	if p < len(tree.prefix) {
-		return nil
-	}
-	return tree.value
+	return iter.Value()
 }
 
 // GetPath returns all values stored in the path from the root to the node at
@@ -57,34 +101,18 @@ func (tree *Paths) Get(key string) interface{} {
 // the full key.
 func (tree *Paths) GetPath(key string) ([]interface{}, bool) {
 	var values []interface{}
-	var p int
+	var value interface{}
+	iter := tree.NewIterator()
 	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
-		// The tree.prefix represents single-child parents without values that
-		// were compressed out of the tree. Let prefix values consume the key.
-		if p < len(tree.prefix) {
-			if part == tree.prefix[p] {
-				p++
-				continue
-			}
+		if !iter.Next(part) {
 			return values, false
 		}
-
-		if tree.value != nil {
-			values = append(values, tree.value)
+		value = iter.Value()
+		if value != nil {
+			values = append(values, value)
 		}
-		tree = tree.children[part]
-		if tree == nil {
-			return values, false
-		}
-		p = 0
 	}
-	if p < len(tree.prefix) {
-		return values, false
-	}
-	if tree.value != nil {
-		values = append(values, tree.value)
-	}
-	return values, true
+	return values, value != nil
 }
 
 // Put inserts the value into the tree at the given key, replacing any existing
@@ -269,28 +297,17 @@ func (tree *Paths) compress() {
 func (tree *Paths) Walk(root string, walkFn WalkFunc) error {
 	// Traverse tree to get to node at key
 	if root != "" {
-		var p int
+		iter := tree.NewIterator()
 		for part, i := pathNext(root, 0); part != ""; part, i = pathNext(root, i) {
-			if p < len(tree.prefix) {
-				if part == tree.prefix[p] {
-					p++
-					continue
-				}
+			if !iter.Next(part) {
 				return nil
 			}
-			tree = tree.children[part]
-			if tree == nil {
-				return nil
-			}
-			p = 0
 		}
-		if p < len(tree.prefix) {
+		// Root is not valid unless a value was stored there
+		if iter.Value() == nil {
 			return nil
 		}
-		// Root is not valid unless a value was stores there
-		if tree.value == nil {
-			return nil
-		}
+		tree = iter.node
 	}
 	// Walk down tree starting at node located at root
 	return tree.walk(root, walkFn)

@@ -11,36 +11,84 @@ type Runes struct {
 	children map[rune]*Runes
 }
 
+// RunesIterator is a stateful iterator that traverses a Runes radix tree one
+// character at a time.
+//
+// Note: Any modification to the tree invalidates the iterator.
+type RunesIterator struct {
+	p    int
+	node *Runes
+}
+
+// NewRunesIterator return a new RunesIterator instance that begins iterating
+// from the root of the given tree.
+func (tree *Runes) NewIterator() *RunesIterator {
+	return &RunesIterator{
+		node: tree,
+	}
+}
+
+// Copy copeis the current iterator into a new iterator.  This allows branching
+// an iterator into two iterators that can take separate parths.
+func (it *RunesIterator) Copy() *RunesIterator {
+	return &RunesIterator{
+		p:    it.p,
+		node: it.node,
+	}
+}
+
+// Next advances the iterator from its current position, to the position of
+// given key symbol in the tree, so long as the given symbol is next in a path
+// in the tree.  If the symbol allows the iterator to advance, then true is
+// returned.  Otherwise false is returned.
+//
+// When false is returned the iterator is not modified. This allows different
+// values to be used, in subsequent calls to Next, to advance the iterator from
+// its current position.
+func (ri *RunesIterator) Next(r rune) bool {
+	// The tree.prefix represents single-child parents without values that were
+	// compressed out of the tree.  Let prefix consume key symbols.
+	if ri.p < len(ri.node.prefix) {
+		if r == ri.node.prefix[ri.p] {
+			// Key matches prefix so far, ok to continue.
+			ri.p++
+			return true
+		}
+		// Some unmatched prefix remains, node not found
+		return false
+	}
+	node := ri.node.children[r]
+	if node == nil {
+		// No more prefix, no children, so node not found
+		return false
+	}
+	// Key symbol matched up to this child, ok to continue.
+	ri.p = 0
+	ri.node = node
+	return true
+}
+
+// Value returns the value at the current iterator position, or nil if there is
+// no value at the position.
+func (ri *RunesIterator) Value() interface{} {
+	// Only return value if all of this node's prefix was matched.  Otherwise,
+	// have not fully traversed into this node (edge not completely traversed).
+	if ri.p != len(ri.node.prefix) {
+		return nil
+	}
+	return ri.node.value
+}
+
 // Get returns the value stored at the given key. Returns nil for internal
 // nodes or for nodes with a value of nil.
 func (tree *Runes) Get(key string) interface{} {
-	var p int
+	iter := tree.NewIterator()
 	for _, r := range key {
-		// The tree.prefix represents single-child parents without values that
-		// were compressed out of the tree. Let prefix values consume the key.
-		if p < len(tree.prefix) {
-			if r == tree.prefix[p] {
-				p++
-				continue
-			}
-			// Some unmatched prefix remains, node not found
+		if !iter.Next(r) {
 			return nil
 		}
-
-		tree = tree.children[r]
-		if tree == nil {
-			// No more prefix, no children, so node not found
-			return nil
-		}
-
-		p = 0
 	}
-	// Key has been consumed by traversing prefixes and/or children.  If key
-	// did not match all of this node's prefix, then did not find value.
-	if p < len(tree.prefix) {
-		return nil
-	}
-	return tree.value
+	return iter.Value()
 }
 
 // GetPath returns all values stored in the path from the root to the node at
@@ -49,34 +97,18 @@ func (tree *Runes) Get(key string) interface{} {
 // the full key.
 func (tree *Runes) GetPath(key string) ([]interface{}, bool) {
 	var values []interface{}
-	var p int
+	var value interface{}
+	iter := tree.NewIterator()
 	for _, r := range key {
-		if p < len(tree.prefix) {
-			if r == tree.prefix[p] {
-				p++
-				continue
-			}
+		if !iter.Next(r) {
 			return values, false
 		}
-		// TODO else?
-
-		if tree.value != nil {
-			values = append(values, tree.value)
+		value = iter.Value()
+		if value != nil {
+			values = append(values, value)
 		}
-
-		tree = tree.children[r]
-		if tree == nil {
-			return values, false
-		}
-		p = 0
 	}
-	if p < len(tree.prefix) {
-		return values, false
-	}
-	if tree.value != nil {
-		values = append(values, tree.value)
-	}
-	return values, true
+	return values, value != nil
 }
 
 // Put inserts the value into the tree at the given key, replacing any
@@ -257,29 +289,18 @@ func (tree *Runes) compress() {
 // The tree is traversed depth-first, in no guaranteed order.
 func (tree *Runes) Walk(root string, walkFn WalkFunc) error {
 	if root != "" {
+		iter := tree.NewIterator()
 		// Traverse tree to get to node at key
-		var p int
 		for _, r := range root {
-			if p < len(tree.prefix) {
-				if r == tree.prefix[p] {
-					p++
-					continue
-				}
+			if !iter.Next(r) {
 				return nil
 			}
-			tree = tree.children[r]
-			if tree == nil {
-				return nil
-			}
-			p = 0
 		}
-		if p < len(tree.prefix) {
+		// Root is not valid unless a value was stored there
+		if iter.Value() == nil {
 			return nil
 		}
-		// Root is not valid unless a value was stores there
-		if tree.value == nil {
-			return nil
-		}
+		tree = iter.node
 	}
 
 	// Walk down tree starting at node located at root

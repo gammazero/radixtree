@@ -41,11 +41,24 @@ func main() {
 	vals, _ := rt.GetPath("tomato")
 	fmt.Println("Values:", vals)   // output: [TOM, TOMATO]
 
+    iter := rt.NewIterator()
+    for _, r := range "tomato" {
+        if !iter.Next(r) {
+            break
+        }
+        val := iter.Value()
+        if val == nil {
+            continue
+        }
+        fmt.Println(val)           // output: tom
+    }                              // output: tomato
+       
     if rt.Delete("tom") {
         fmt.Println("Deleted tom") // output: Deleted tom
     }
 	val = rt.Get("tom")
 	fmt.Println("Found", val)      // output: Found <nil>
+
 }
 ```
 
