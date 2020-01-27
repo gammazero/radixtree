@@ -349,6 +349,65 @@ func TestPathsGetPath(t *testing.T) {
 	}
 }
 
+func TestPathsCopyIterator(t *testing.T) {
+	tree := new(Paths)
+	tree.Put("/L1/L2", 1)
+	tree.Put("/L1/L2/L3A", 2)
+	tree.Put("/L1/L2/L3B/L4", 3)
+
+	// (root) /L1-> ("/L2", 1) /L3A-> ("", 2)
+	//                         /L3B-> ("/L4", 3)
+
+	iter := tree.NewIterator()
+	if iter.Next("/x") {
+		t.Fatal("/x should not have advanced iterator")
+	}
+	if !iter.Next("/L1") {
+		t.Fatal("/L1 should have advanced iterator")
+	}
+	if iter.Value() != nil {
+		t.Fatal("should not have value at /L1")
+	}
+	if !iter.Next("/L2") {
+		t.Fatal("/L2 should have advanced iterator")
+	}
+	if iter.Value() != 1 {
+		t.Fatal("expected value 1 at /L2, got ", iter.Value())
+	}
+	if iter.Next("/L4") {
+		t.Fatal("/L4 should not have advanced iterator")
+	}
+
+	// branch iterator
+	iterB := iter.Copy()
+	if !iterB.Next("/L3B") {
+		t.Fatal("/L3B should have advanced iterator")
+	}
+	if iterB.Value() != nil {
+		t.Fatal("should not have value at /L3B")
+	}
+	if !iterB.Next("/L4") {
+		t.Fatal("/L4 should have advanced iterator")
+	}
+	if iterB.Value() != 3 {
+		t.Fatal("expected value 3 at /L4, got ", iterB.Value())
+	}
+	if iterB.Next("/L4") {
+		t.Fatal("/L4 should not have advanced iterator")
+	}
+
+	if !iter.Next("/L3A") {
+		t.Fatal("/L3A should have advanced iterator")
+	}
+	if iter.Value() != 2 {
+		t.Fatal("expected value 2 at /L3A, got ", iter.Value())
+	}
+	if iter.Next("/L3B") {
+		t.Fatal("/L3B should not have advanced iterator")
+	}
+
+}
+
 func TestPaths(t *testing.T) {
 	testRadixTree(t, new(Paths))
 }

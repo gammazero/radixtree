@@ -482,6 +482,80 @@ func TestRunesBuildEdgeCases(t *testing.T) {
 	t.Log(dump(tree))
 }
 
+func TestRunesCopyIterator(t *testing.T) {
+	rt := new(Runes)
+	rt.Put("tom", "TOM")
+	rt.Put("tomato", "TOMATO")
+	rt.Put("torn", "TORN")
+
+	// (root) t-> ("o", _) m-> ("", TOM) a-> ("to", TOMATO)
+	//                     r-> ("n", TORN)
+
+	iter := rt.NewIterator()
+	if iter.Next('x') {
+		t.Fatal("'x' should not have advanced iterator")
+	}
+	if !iter.Next('t') {
+		t.Fatal("'t' should have advanced iterator")
+	}
+	if iter.Value() != nil {
+		t.Fatal("should not have value at 't'")
+	}
+	if !iter.Next('o') {
+		t.Fatal("'o' should have advanced iterator")
+	}
+	if iter.Value() != nil {
+		t.Fatal("should not have value at 'o'")
+	}
+	if iter.Next('o') {
+		t.Fatal("'o' should not have advanced iterator")
+	}
+
+	// branch iterator
+	iterR := iter.Copy()
+
+	if !iter.Next('m') {
+		t.Fatal("'m' should have advanced iterator")
+	}
+	if iter.Value() != "TOM" {
+		t.Fatalf("expected \"TOM\" at 'm', got %q", iter.Value())
+	}
+	if !iter.Next('a') {
+		t.Fatal("'a' should have advanced iterator")
+	}
+	if iter.Value() != nil {
+		t.Fatal("should not have value at 'a'")
+	}
+	if !iter.Next('t') {
+		t.Fatal("'t' should have advanced iterator")
+	}
+	if iter.Value() != nil {
+		t.Fatal("should not have value at 't'")
+	}
+	if !iter.Next('o') {
+		t.Fatal("'o' should have advanced iterator")
+	}
+	if iter.Value() != "TOMATO" {
+		t.Fatal("expected \"TOMATO\" 'o'")
+	}
+
+	if !iterR.Next('r') {
+		t.Fatal("'r' should have advanced iterator")
+	}
+	if iterR.Value() != nil {
+		t.Fatal("should not have value at 'r', got ", iterR.Value())
+	}
+	if !iterR.Next('n') {
+		t.Fatal("'n' should have advanced iterator")
+	}
+	if iterR.Value() != "TORN" {
+		t.Fatal("expected \"TORN\" 'n'")
+	}
+	if iterR.Next('n') {
+		t.Fatal("'n' should not have advanced iterator")
+	}
+}
+
 func TestRunes(t *testing.T) {
 	testRadixTree(t, new(Runes))
 }
