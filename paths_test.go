@@ -271,6 +271,10 @@ func TestPathsDelete(t *testing.T) {
 	}
 
 	// Test that Delete prunes
+	// (root) /L1-> ("", 5) /L2-> ("/L3A", 2)
+	//                      /L2B-> ("L3C", 4)
+	// delete /L1/L2B/L3C
+	// (root) /L1-> ("", 5) /L2-> ("/L3A", 2)
 	if !tree.Delete("/L1/L2B/L3C") {
 		t.Error("did not delete \"/L1/L2B/L3C\"")
 	}
@@ -281,6 +285,9 @@ func TestPathsDelete(t *testing.T) {
 	}
 
 	// Test that Delete compresses
+	// (root) /L1-> ("", 5) /L2-> ("/L3A", 2)
+	// delete /L1
+	// (root) /L1-> ("/L2/L3A", 2)
 	if !tree.Delete("/L1") {
 		t.Error("did not delete \"/L1/L2B/L3C\"")
 	}
@@ -291,6 +298,28 @@ func TestPathsDelete(t *testing.T) {
 	if strings.Join(node.prefix, "") != "/L2/L3A" {
 		t.Log(dump(tree))
 		t.Error("worng prefix for compresses node:", strings.Join(node.prefix, ""))
+	}
+
+	tree.Put("/L1/L2/L3A/L4", 6)
+
+	// Check that Delete prunes up to node with value
+	// (root) /L1-> ("/L2/L3A", 2) /L4->("", 6)
+	// delete /L1/L2/L3A/L4
+	// (root) /L1-> ("/L2/L3A", 2)
+	if !tree.Delete("/L1/L2/L3A/L4") {
+		t.Error("did not delete \"/L1/L2/L3A/L4\"")
+	}
+	node = tree.children["/L1"]
+	if node == nil {
+		t.Fatal("expected node at \"L1\"")
+	}
+	if strings.Join(node.prefix, "") != "/L2/L3A" {
+		t.Log(dump(tree))
+		t.Error("worng prefix for compresses node:", strings.Join(node.prefix, ""))
+	}
+	if len(node.children) != 0 {
+		t.Log(dump(tree))
+		t.Error("node should not have children")
 	}
 }
 
