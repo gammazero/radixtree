@@ -14,8 +14,8 @@ var PathSeparator = '/'
 // "/a", "/b", "/c". A different path separator character may be specified by
 // setting PathSeparator.
 //
-// Non-terminal nodes have nil values so a stored nil value is no
-// distinguishable and is not be included in results from GetPath or Walk.
+// Non-terminal nodes have nil values, so a stored nil value is not
+// distinguishable and is not be included in Walk or WalkPath.
 type Paths struct {
 	prefix   []string
 	value    interface{}
@@ -93,26 +93,6 @@ func (tree *Paths) Get(key string) interface{} {
 		}
 	}
 	return iter.Value()
-}
-
-// GetPath returns all values stored in the path from the root to the node at
-// the given key. Does not return values for internal nodes or for nodes with a
-// value of nil. Returns a boolean indicating if there was a value stored at
-// the full key.
-func (tree *Paths) GetPath(key string) ([]interface{}, bool) {
-	var values []interface{}
-	var value interface{}
-	iter := tree.NewIterator()
-	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
-		if !iter.Next(part) {
-			return values, false
-		}
-		value = iter.Value()
-		if value != nil {
-			values = append(values, value)
-		}
-	}
-	return values, value != nil
 }
 
 // Put inserts the value into the tree at the given key, replacing any existing
@@ -326,6 +306,41 @@ func (tree *Paths) walk(key string, walkFn WalkFunc) error {
 	for part, child := range tree.children {
 		if err := child.walk(key+part+strings.Join(child.prefix, ""), walkFn); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// WalkPath walks the path in tree from the root to the node at the given key,
+// calling walkFn for each node that has a value.
+func (tree *Paths) WalkPath(key string, walkFn WalkFunc) error {
+	if tree.value != nil {
+		if err := walkFn("", tree.value); err != nil {
+			if err == Skip {
+				return nil
+			}
+			return err
+		}
+	}
+	iter := tree.NewIterator()
+	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
+		if !iter.Next(part) {
+			return nil
+		}
+		value := iter.Value()
+		if value != nil {
+			var k string
+			if i == -1 {
+				k = key
+			} else {
+				k = key[0:i]
+			}
+			if err := walkFn(k, value); err != nil {
+				if err == Skip {
+					return nil
+				}
+				return err
+			}
 		}
 	}
 	return nil

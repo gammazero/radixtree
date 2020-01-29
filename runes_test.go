@@ -284,30 +284,6 @@ func TestRunesAddExisting(t *testing.T) {
 	}
 }
 
-func TestRunesGetPath(t *testing.T) {
-	rt := new(Runes)
-	rt.Put("tom", "TOM")
-	rt.Put("tomato", "TOMATO")
-	rt.Put("torn", "TORN")
-	rt.Put("tag", "TAG")
-	rt.Put("to", "TO")
-
-	// (root) t-> ("", _) o-> ("", TO) m-> ("", TOM) a-> ("to", TOMATO)
-	//                                 r-> ("n", TORN)
-	//                    a-> ("g", TAG)
-	// GetPath("tomato") => TO, TOM, TOMATO
-	vals, ok := rt.GetPath("tomato")
-	if !ok {
-		t.Error("should have found key \"tomato\"")
-	}
-	if len(vals) != 3 {
-		t.Fatal("expected 3 values, got", len(vals), vals)
-	}
-	if vals[0] != "TO" || vals[1] != "TOM" || vals[2] != "TOMATO" {
-		t.Error("did not get expected values, got ", vals)
-	}
-}
-
 func TestRunesDelete(t *testing.T) {
 	rt := new(Runes)
 	rt.Put("tom", "TOM")

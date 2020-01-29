@@ -10,10 +10,10 @@ import (
 // rtree is an interface common to all radix tree types, used for test
 type rtree interface {
 	Get(key string) interface{}
-	GetPath(key string) ([]interface{}, bool)
 	Put(key string, value interface{}) bool
 	Delete(key string) bool
 	Walk(startKey string, walkFn WalkFunc) error
+	WalkPath(startKey string, walkFn WalkFunc) error
 	Inspect(inspectFn InspectFunc) error
 }
 
@@ -70,14 +70,20 @@ func testRadixTree(t *testing.T, tree rtree) {
 		}
 	}
 
-	// get path
-	t.Log(dump(tree))
-	vals, ok := tree.GetPath("bad/key")
-	if ok {
-		t.Error("should not have found node")
+	var wvals []interface{}
+	kvMap := map[string]interface{}{}
+	walkFn := func(key string, value interface{}) error {
+		kvMap[key] = value
+		wvals = append(wvals, value)
+		return nil
 	}
-	if len(vals) != 0 {
-		t.Error("should not have returned values, got ", vals)
+
+	// walk path
+	t.Log(dump(tree))
+	key := "bad/key"
+	tree.WalkPath(key, walkFn)
+	if len(kvMap) != 0 {
+		t.Error("should not have returned values, got ", kvMap)
 	}
 	lastKey := keys[len(keys)-1]
 	var expectVals []interface{}
@@ -87,16 +93,28 @@ func testRadixTree(t *testing.T, tree rtree) {
 			expectVals = append(expectVals, strings.ToUpper(key))
 		}
 	}
-	vals, ok = tree.GetPath(lastKey)
-	if !ok {
+	kvMap = map[string]interface{}{}
+	wvals = nil
+	tree.WalkPath(lastKey, walkFn)
+	if kvMap[lastKey] == nil {
 		t.Fatalf("expected value for %s", lastKey)
 	}
-	if len(vals) != len(expectVals) {
-		t.Errorf("expected %d values, got %d", len(expectVals), len(vals))
+	if len(kvMap) != len(expectVals) {
+		t.Errorf("expected %d values, got %d", len(expectVals), len(kvMap))
 	} else {
-		for i := range expectVals {
-			if vals[i] != expectVals[i] {
-				t.Errorf("expected value %v at position %d, got %v", expectVals[i], i, vals[i])
+		for i, expect := range expectVals {
+			var found bool
+			for _, v := range kvMap {
+				if v == expect {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("did not find expected value %v", expectVals[i])
+			}
+			if wvals[i] != expect {
+				t.Errorf("did not find expected value %v at pos %d, got %v", expect, i, wvals[i])
 			}
 		}
 	}
@@ -177,8 +195,8 @@ func testWalk(t *testing.T, tree rtree) {
 	}
 	// key -> times visited
 	visited := make(map[string]int, len(keys))
-	for _, key := range keys {
-		visited[key] = 0
+	for _, k := range keys {
+		visited[k] = 0
 	}
 
 	for _, key := range keys {
@@ -246,8 +264,8 @@ func testWalk(t *testing.T, tree rtree) {
 	}
 
 	// Reset visited counts
-	for _, key := range keys {
-		visited[key] = 0
+	for _, k := range keys {
+		visited[k] = 0
 	}
 
 	if err := tree.Walk("/rat", walkFn); err != nil {
@@ -271,11 +289,12 @@ func testWalk(t *testing.T, tree rtree) {
 	}
 
 	// Reset visited counts
-	for _, key := range keys {
-		visited[key] = 0
+	for _, k := range keys {
+		visited[k] = 0
 	}
 
-	if err := tree.Walk("/rat/whiskers", walkFn); err != nil {
+	err = tree.Walk("/rat/whiskers", walkFn)
+	if err != nil {
 		t.Errorf("expected error nil, got %v", err)
 	}
 	for i, key := range keys {
@@ -292,6 +311,128 @@ func testWalk(t *testing.T, tree rtree) {
 		t.Log(dump(tree))
 		t.Error(keys[6], " should have been visited")
 	}
+
+	// Reset visited counts
+	for _, k := range keys {
+		visited[k] = 0
+	}
+
+	testKey := "/rat/winks/wryly/once"
+	keys = append(keys, testKey)
+	tree.Put(testKey, strings.ToUpper(testKey))
+
+	err = tree.WalkPath(testKey, walkFn)
+	if err != nil {
+		t.Errorf("expected error nil, got %v", err)
+	}
+	err = checkVisited(visited, "/rat", "/rat/winks/wryly", testKey)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Reset visited counts
+	for _, k := range keys {
+		visited[k] = 0
+	}
+	err = tree.WalkPath(testKey, func(key string, value interface{}) error {
+		visited[key]++
+		if key == "/rat/winks/wryly" {
+			return Skip
+		}
+		return nil
+	})
+	if err != nil {
+		t.Errorf("expected error nil, got %v", err)
+	}
+	err = checkVisited(visited, "/rat", "/rat/winks/wryly")
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Reset visited counts
+	for _, k := range keys {
+		visited[k] = 0
+	}
+	err = tree.WalkPath(testKey, func(key string, value interface{}) error {
+		visited[key]++
+		t.Log("===> Walking", key)
+		if key == "/rat/winks/wryly" {
+			return fmt.Errorf("error at key %s", key)
+		}
+		return nil
+	})
+	if err == nil {
+		t.Errorf("expected error")
+	}
+	err = checkVisited(visited, "/rat", "/rat/winks/wryly")
+	if err != nil {
+		t.Error(err)
+	}
+
+	var foundRoot bool
+	tree.Put("", "ROOT")
+	tree.WalkPath(testKey, func(key string, value interface{}) error {
+		if key == "" && value == "ROOT" {
+			foundRoot = true
+		}
+		return nil
+	})
+	if !foundRoot {
+		t.Error("did not find root")
+	}
+
+	for _, k := range keys {
+		visited[k] = 0
+	}
+
+	err = tree.WalkPath(testKey, func(key string, value interface{}) error {
+		if key == "" && value == "ROOT" {
+			return Skip
+		}
+		return nil
+	})
+	if err != nil {
+		t.Errorf("expected error nil, got %v", err)
+	}
+	for k, count := range visited {
+		if count != 0 {
+			t.Error("should not have visited ", k)
+		}
+	}
+
+	err = tree.WalkPath(testKey, func(key string, value interface{}) error {
+		if key == "" && value == "ROOT" {
+			return errors.New("error at root")
+		}
+		return nil
+	})
+	if err == nil {
+		t.Errorf("expected error")
+	}
+	for k, count := range visited {
+		if count != 0 {
+			t.Error("should not have visited ", k)
+		}
+	}
+}
+
+func checkVisited(visited map[string]int, expectVisited ...string) error {
+	for _, key := range expectVisited {
+		if visited[key] != 1 {
+			return fmt.Errorf("%s should have been visited once", key)
+		}
+		delete(visited, key)
+	}
+	for key, count := range visited {
+		if count != 0 {
+			return fmt.Errorf("%s should not have been visited", key)
+		}
+	}
+	for _, key := range expectVisited {
+		visited[key] = 1
+	}
+
+	return nil
 }
 
 func testWalkError(t *testing.T, tree rtree) {
