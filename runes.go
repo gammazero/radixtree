@@ -1,8 +1,8 @@
 package radixtree
 
 // Runes is a radix tree of runes with string keys and interface{} values.
-// Non-terminal nodes have nil values so a stored nil value is no
-// distinguishable and is not be included in results from GetPath or Walk.
+// Non-terminal nodes have nil values, so a stored nil value is not
+// distinguishable and is not included in Walk or WalkPath.
 type Runes struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
@@ -89,26 +89,6 @@ func (tree *Runes) Get(key string) interface{} {
 		}
 	}
 	return iter.Value()
-}
-
-// GetPath returns all values stored in the path from the root to the node at
-// the given key. Does not return values for internal nodes or for nodes with a
-// value of nil. Returns a boolean indicating if there was a value stored at
-// the full key.
-func (tree *Runes) GetPath(key string) ([]interface{}, bool) {
-	var values []interface{}
-	var value interface{}
-	iter := tree.NewIterator()
-	for _, r := range key {
-		if !iter.Next(r) {
-			return values, false
-		}
-		value = iter.Value()
-		if value != nil {
-			values = append(values, value)
-		}
-	}
-	return values, value != nil
 }
 
 // Put inserts the value into the tree at the given key, replacing any
@@ -320,6 +300,36 @@ func (tree *Runes) walk(key string, walkFn WalkFunc) error {
 	for r, child := range tree.children {
 		if err := child.walk(key+string(r)+string(child.prefix), walkFn); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// WalkPath walks the path in tree from the root to the node at the given key,
+// calling walkFn for each node that has a value.
+func (tree *Runes) WalkPath(key string, walkFn WalkFunc) error {
+	if tree.value != nil {
+		if err := walkFn("", tree.value); err != nil {
+			if err == Skip {
+				return nil
+			}
+			return err
+		}
+	}
+	iter := tree.NewIterator()
+	for i, r := range key {
+		if !iter.Next(r) {
+			return nil
+		}
+		value := iter.Value()
+		if value != nil {
+			err := walkFn(string(key[0:i+1]), value)
+			if err != nil {
+				if err == Skip {
+					return nil
+				}
+				return err
+			}
 		}
 	}
 	return nil

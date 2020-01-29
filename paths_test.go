@@ -323,32 +323,6 @@ func TestPathsDelete(t *testing.T) {
 	}
 }
 
-func TestPathsGetPath(t *testing.T) {
-	tree := new(Paths)
-	tree.Put("/L1/L2", 1)
-	tree.Put("/L1/L2/L3A", 2)
-	tree.Put("/L1/L2/L3B/L4", 3)
-	tree.Put("/L1/L2B/L3C", 4)
-	tree.Put("/L1", 5)
-
-	// (root) /L1-> ("", 5) /L2-> ("", 1) /L3A-> ("", 2)
-	//                                    /L3B-> ("/L4", 3)
-	//
-	//                      /L2B-> ("L3C", 4)
-	//
-	// GetPath("/L1/L2B/L3C") => 5, 4
-	vals, ok := tree.GetPath("/L1/L2B/L3C")
-	if !ok {
-		t.Error("should have found key \"/L1/L2B/L3C\"")
-	}
-	if len(vals) != 2 {
-		t.Fatal("expected 2 values, got ", len(vals), vals)
-	}
-	if vals[0] != 5 || vals[1] != 4 {
-		t.Error("did not get expected values, got ", vals)
-	}
-}
-
 func TestPathsCopyIterator(t *testing.T) {
 	tree := new(Paths)
 	tree.Put("/L1/L2", 1)
