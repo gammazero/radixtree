@@ -57,30 +57,30 @@ func (it *PathsIterator) Copy() *PathsIterator {
 // its current position.
 //
 // Any part subsequent to the first, must begin with the PathSeparator.
-func (pi *PathsIterator) Next(part string) bool {
-	if pi.p < len(pi.node.prefix) {
-		if part == pi.node.prefix[pi.p] {
-			pi.p++
+func (it *PathsIterator) Next(part string) bool {
+	if it.p < len(it.node.prefix) {
+		if part == it.node.prefix[it.p] {
+			it.p++
 			return true
 		}
 		return false
 	}
-	node := pi.node.children[part]
+	node := it.node.children[part]
 	if node == nil {
 		return false
 	}
-	pi.p = 0
-	pi.node = node
+	it.p = 0
+	it.node = node
 	return true
 }
 
 // Value returns the value at the current iterator position, or nil if there is
 // no value at the position.
-func (pi *PathsIterator) Value() interface{} {
-	if pi.p != len(pi.node.prefix) {
+func (it *PathsIterator) Value() interface{} {
+	if it.p != len(it.node.prefix) {
 		return nil
 	}
-	return pi.node.value
+	return it.node.value
 }
 
 // Get returns the value stored at the given key. Returns nil for internal

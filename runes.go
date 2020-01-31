@@ -45,38 +45,38 @@ func (it *RunesIterator) Copy() *RunesIterator {
 // When false is returned the iterator is not modified. This allows different
 // values to be used, in subsequent calls to Next, to advance the iterator from
 // its current position.
-func (ri *RunesIterator) Next(r rune) bool {
+func (it *RunesIterator) Next(r rune) bool {
 	// The tree.prefix represents single-child parents without values that were
 	// compressed out of the tree.  Let prefix consume key symbols.
-	if ri.p < len(ri.node.prefix) {
-		if r == ri.node.prefix[ri.p] {
+	if it.p < len(it.node.prefix) {
+		if r == it.node.prefix[it.p] {
 			// Key matches prefix so far, ok to continue.
-			ri.p++
+			it.p++
 			return true
 		}
 		// Some unmatched prefix remains, node not found
 		return false
 	}
-	node := ri.node.children[r]
+	node := it.node.children[r]
 	if node == nil {
 		// No more prefix, no children, so node not found
 		return false
 	}
 	// Key symbol matched up to this child, ok to continue.
-	ri.p = 0
-	ri.node = node
+	it.p = 0
+	it.node = node
 	return true
 }
 
 // Value returns the value at the current iterator position, or nil if there is
 // no value at the position.
-func (ri *RunesIterator) Value() interface{} {
+func (it *RunesIterator) Value() interface{} {
 	// Only return value if all of this node's prefix was matched.  Otherwise,
 	// have not fully traversed into this node (edge not completely traversed).
-	if ri.p != len(ri.node.prefix) {
+	if it.p != len(it.node.prefix) {
 		return nil
 	}
-	return ri.node.value
+	return it.node.value
 }
 
 // Get returns the value stored at the given key. Returns nil for internal
