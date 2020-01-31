@@ -27,25 +27,25 @@ $ go get github.com/gammazero/radixtree
 package main
 
 import (
-	"fmt"
-	"github.com/gammazero/radixtree"
+    "fmt"
+    "github.com/gammazero/radixtree"
 )
 
 func main() {
-	rt := new(radixtree.Runes)
-	rt.Put("tomato", "TOMATO")
-	rt.Put("tom", "TOM")
-	rt.Put("tornado", "TORNADO")
+    rt := new(radixtree.Runes)
+    rt.Put("tomato", "TOMATO")
+    rt.Put("tom", "TOM")
+    rt.Put("tornado", "TORNADO")
 
-	val := rt.Get("tom")
-	fmt.Println("Found", val)      // output: Found TOM
+    val := rt.Get("tom")
+    fmt.Println("Found", val)      // output: Found TOM
 
     var vals []interface{}
     rt.WalkPath("tomato", func(key string, value interface{}) error {
         vals = append(vals, value)
         return nil
     })
-	fmt.Println("Values:", vals)   // output: [TOM, TOMATO]
+    fmt.Println("Values:", vals)   // output: [TOM, TOMATO]
 
     iter := rt.NewIterator()
     for _, r := range "tomato" {
@@ -62,9 +62,8 @@ func main() {
     if rt.Delete("tom") {
         fmt.Println("Deleted tom") // output: Deleted tom
     }
-	val = rt.Get("tom")
-	fmt.Println("Found", val)      // output: Found <nil>
-
+    val = rt.Get("tom")
+    fmt.Println("Found", val)      // output: Found <nil>
 }
 ```
 
