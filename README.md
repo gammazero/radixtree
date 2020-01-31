@@ -40,7 +40,11 @@ func main() {
 	val := rt.Get("tom")
 	fmt.Println("Found", val)      // output: Found TOM
 
-	vals, _ := rt.GetPath("tomato")
+    var vals []interface{}
+    rt.WalkPath("tomato", func(key string, value interface{}) error {
+        vals = append(vals, value)
+        return nil
+    })
 	fmt.Println("Values:", vals)   // output: [TOM, TOMATO]
 
     iter := rt.NewIterator()
