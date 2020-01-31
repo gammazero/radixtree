@@ -45,7 +45,7 @@ func main() {
         vals = append(vals, value)
         return nil
     })
-    fmt.Println("Values:", vals)   // output: [TOM, TOMATO]
+    fmt.Println(vals)              // output: [TOM, TOMATO]
 
     iter := rt.NewIterator()
     for _, r := range "tomato" {
