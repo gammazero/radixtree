@@ -284,12 +284,22 @@ func (tree *Runes) Walk(root string, walkFn WalkFunc) error {
 	}
 
 	// Walk down tree starting at node located at root
-	return tree.walk(root, walkFn)
+	return tree.walk(&runesKeyStringer{[]rune(root)}, walkFn)
 }
 
-func (tree *Runes) walk(key string, walkFn WalkFunc) error {
+// runesKeyStringer implements KeyStringer, used for WalkFunc
+type runesKeyStringer struct {
+	runes []rune
+}
+
+// String returns the string form of key elements accumulated during walk.
+func (k runesKeyStringer) String() string {
+	return string(k.runes)
+}
+
+func (tree *Runes) walk(k *runesKeyStringer, walkFn WalkFunc) error {
 	if tree.value != nil {
-		if err := walkFn(key, tree.value); err != nil {
+		if err := walkFn(k, tree.value); err != nil {
 			if err == Skip {
 				// Ignore current node's children.
 				return nil
@@ -297,8 +307,10 @@ func (tree *Runes) walk(key string, walkFn WalkFunc) error {
 			return err
 		}
 	}
+	keylen := len(k.runes)
 	for r, child := range tree.children {
-		if err := child.walk(key+string(r)+string(child.prefix), walkFn); err != nil {
+		k.runes = append(append(k.runes[:keylen], r), child.prefix...)
+		if err := child.walk(k, walkFn); err != nil {
 			return err
 		}
 	}
@@ -307,7 +319,7 @@ func (tree *Runes) walk(key string, walkFn WalkFunc) error {
 
 // WalkPath walks the path in tree from the root to the node at the given key,
 // calling walkFn for each node that has a value.
-func (tree *Runes) WalkPath(key string, walkFn WalkFunc) error {
+func (tree *Runes) WalkPath(key string, walkFn WalkPathFunc) error {
 	if tree.value != nil {
 		if err := walkFn("", tree.value); err != nil {
 			if err == Skip {

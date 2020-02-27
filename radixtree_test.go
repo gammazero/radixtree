@@ -12,8 +12,8 @@ type rtree interface {
 	Get(key string) interface{}
 	Put(key string, value interface{}) bool
 	Delete(key string) bool
-	Walk(startKey string, walkFn WalkFunc) error
-	WalkPath(startKey string, walkFn WalkFunc) error
+	Walk(key string, walkFn WalkFunc) error
+	WalkPath(key string, walkFn WalkPathFunc) error
 	Inspect(inspectFn InspectFunc) error
 }
 
@@ -205,8 +205,9 @@ func testWalk(t *testing.T, tree rtree) {
 		}
 	}
 
-	walkFn := func(key string, value interface{}) error {
+	walkFn := func(k KeyStringer, value interface{}) error {
 		// value for each walked key is correct
+		key := k.String()
 		if value != strings.ToUpper(key) {
 			t.Errorf("expected key %s to have value %v, got %v", key, strings.ToUpper(key), value)
 		}
@@ -318,7 +319,16 @@ func testWalk(t *testing.T, tree rtree) {
 	keys = append(keys, testKey)
 	tree.Put(testKey, strings.ToUpper(testKey))
 
-	err = tree.WalkPath(testKey, walkFn)
+	walkPFn := func(key string, value interface{}) error {
+		// value for each walked key is correct
+		if value != strings.ToUpper(key) {
+			t.Errorf("expected key %s to have value %v, got %v", key, strings.ToUpper(key), value)
+		}
+		visited[key]++
+		return nil
+	}
+
+	err = tree.WalkPath(testKey, walkPFn)
 	if err != nil {
 		t.Errorf("expected error nil, got %v", err)
 	}
@@ -446,7 +456,7 @@ func testWalkError(t *testing.T, tree rtree) {
 
 	walkErr := errors.New("walk error")
 	var walked int
-	walkFn := func(key string, value interface{}) error {
+	walkFn := func(k KeyStringer, value interface{}) error {
 		if value == 999 {
 			return walkErr
 		}
@@ -475,7 +485,7 @@ func testWalkSkip(t *testing.T, tree rtree) {
 		t.Log(dump(tree))
 	}
 	var walked int
-	walkFn := func(key string, value interface{}) error {
+	walkFn := func(k KeyStringer, value interface{}) error {
 		switch value {
 		case 555:
 			return Skip

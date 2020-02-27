@@ -289,13 +289,24 @@ func (tree *Paths) Walk(root string, walkFn WalkFunc) error {
 		}
 		tree = iter.node
 	}
+
 	// Walk down tree starting at node located at root
-	return tree.walk(root, walkFn)
+	return tree.walk(&pathsKeyStringer{[]string{root}}, walkFn)
 }
 
-func (tree *Paths) walk(key string, walkFn WalkFunc) error {
+// pathsKeyStringer implements KeyStringer, used for WalkFunc
+type pathsKeyStringer struct {
+	parts []string
+}
+
+// String returns the string form of key segments accumulated during walk.
+func (p *pathsKeyStringer) String() string {
+	return strings.Join(p.parts, "")
+}
+
+func (tree *Paths) walk(k *pathsKeyStringer, walkFn WalkFunc) error {
 	if tree.value != nil {
-		if err := walkFn(key, tree.value); err != nil {
+		if err := walkFn(k, tree.value); err != nil {
 			if err == Skip {
 				// Ignore current node's children.
 				return nil
@@ -303,8 +314,10 @@ func (tree *Paths) walk(key string, walkFn WalkFunc) error {
 			return err
 		}
 	}
+	partsLen := len(k.parts)
 	for part, child := range tree.children {
-		if err := child.walk(key+part+strings.Join(child.prefix, ""), walkFn); err != nil {
+		k.parts = append(append(k.parts[:partsLen], part), child.prefix...)
+		if err := child.walk(k, walkFn); err != nil {
 			return err
 		}
 	}
@@ -313,7 +326,7 @@ func (tree *Paths) walk(key string, walkFn WalkFunc) error {
 
 // WalkPath walks the path in tree from the root to the node at the given key,
 // calling walkFn for each node that has a value.
-func (tree *Paths) WalkPath(key string, walkFn WalkFunc) error {
+func (tree *Paths) WalkPath(key string, walkFn WalkPathFunc) error {
 	if tree.value != nil {
 		if err := walkFn("", tree.value); err != nil {
 			if err == Skip {
