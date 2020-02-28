@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	wordsPath = "/usr/share/dict/wordsX"
+	wordsPath = "/usr/share/dict/words"
 	web2aPath = "/usr/share/dict/web2a"
 )
 
