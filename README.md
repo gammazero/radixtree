@@ -5,9 +5,11 @@
 [![codecov](https://codecov.io/gh/gammazero/radixtree/branch/master/graph/badge.svg)](https://codecov.io/gh/gammazero/radixtree)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Package `radixtree` implements multiple forms of an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree.  It is adaptive in the sense that nodes are not constant size, having as few or many children as needed, up to the number of different key segments to traverse to the next branch or value.
+Package `radixtree` implements multiple forms of an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree.  This data structure is useful to quickly looking up data without necessarily looking at the entire key, or when finding items that match some prefix of a search key (i.e. are found along the way when retrieving an item identified by a key).  When different values are stored using keys that have a common prefix, the common part of the key is only stored once.  Consider this when keys are similar an OID, filepath, geohash, network address, etc.
 
-The implementations are optimized for Get performance and allocate 0 bytes of heap memory per Get; therefore no garbage to collect.  Once the radix tree is build, it can be repeatedly searched very quickly.
+This radix tree is adaptive in the sense that nodes are not constant size, having as few or many children as needed, up to the number of different key segments to traverse to the next branch or value.
+
+The implementations are optimized for Get performance and allocate 0 bytes of heap memory per Get; therefore no garbage to collect.  Once the radix tree is built, it can be repeatedly searched very quickly.
 
 An iterator for each type of radix tree allows a tree to be traversed one key segment at a time.  This is useful for incremental lookups of partial keys.
 
