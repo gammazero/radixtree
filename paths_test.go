@@ -382,6 +382,49 @@ func TestPathsCopyIterator(t *testing.T) {
 
 }
 
+func TestSimplePathWalk(t *testing.T) {
+	rt := new(Paths)
+	rt.Put("tom/ato", "TOMATO")
+	rt.Put("tom", "TOM")
+	rt.Put("torn/ad/o", "TORNADO")
+
+	count := 0
+	rt.Walk("tom/ato", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 1 {
+		t.Errorf("expected to visit 1 key, visited %d", count)
+	}
+
+	count = 0
+	rt.Walk("tom", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 2 {
+		t.Errorf("expected to visit 3 keys, visited %d", count)
+	}
+
+	count = 0
+	rt.Walk("tomx", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 0 {
+		t.Errorf("expected to visit 0 keys, visited %d", count)
+	}
+
+	count = 0
+	rt.Walk("torn", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 1 {
+		t.Errorf("expected to visit 1 key, visited %d", count)
+	}
+}
+
 func TestPaths(t *testing.T) {
 	testRadixTree(t, new(Paths))
 }

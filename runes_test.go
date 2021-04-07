@@ -532,6 +532,67 @@ func TestRunesCopyIterator(t *testing.T) {
 	}
 }
 
+func TestSimpleRunesWalk(t *testing.T) {
+	rt := new(Runes)
+	rt.Put("tomato", "TOMATO")
+	rt.Put("tom", "TOM")
+	rt.Put("tornado", "TORNADO")
+
+	count := 0
+	rt.Walk("tomato", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 1 {
+		t.Errorf("expected to visit 1 key, visited %d", count)
+	}
+
+	count = 0
+	rt.Walk("t", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 3 {
+		t.Errorf("expected to visit 3 keys, visited %d", count)
+	}
+
+	count = 0
+	rt.Walk("to", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 3 {
+		t.Errorf("expected to visit 3 keys, visited %d", count)
+	}
+
+	count = 0
+	rt.Walk("tom", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 2 {
+		t.Errorf("expected to visit 2 keys, visited %d", count)
+	}
+
+	count = 0
+	rt.Walk("tomx", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 0 {
+		t.Errorf("expected to visit 0 keys, visited %d", count)
+	}
+
+	count = 0
+	rt.Walk("torn", func(key KeyStringer, value interface{}) error {
+		count++
+		return nil
+	})
+	if count != 1 {
+		t.Errorf("expected to visit 1 key, visited %d", count)
+	}
+}
+
 func TestRunes(t *testing.T) {
 	testRadixTree(t, new(Runes))
 }
