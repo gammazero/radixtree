@@ -268,30 +268,34 @@ func (tree *Paths) compress() {
 	}
 }
 
-// Walk walks the radix tree rooted at root ("" to start at root or tree),
-// calling walkFn for each value found. If walkFn returns an error, the walk is
-// aborted. If walkFn returns Skip, Walk will not descend into the node's
-// children.
+// Walk visits all nodes whose keys match or are are prefixed by the specified
+// key, calling walkFn for each value found. If walkFn returns an error, the
+// walk is aborted. If walkFn returns Skip, Walk will not descend into the
+// node's children. Use empty key "" to visit all nodes.
 //
 // The tree is traversed depth-first, in no guaranteed order.
-func (tree *Paths) Walk(root string, walkFn WalkFunc) error {
+func (tree *Paths) Walk(key string, walkFn WalkFunc) error {
 	// Traverse tree to get to node at key
-	if root != "" {
+	if key != "" {
 		iter := tree.NewIterator()
-		for part, i := pathNext(root, 0); part != ""; part, i = pathNext(root, i) {
+		for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
 			if !iter.Next(part) {
 				return nil
 			}
 		}
-		// Root is not valid unless a value was stored there
-		if iter.Value() == nil {
-			return nil
-		}
 		tree = iter.node
+		// If iter.Value() is nil then this is an intermediate node, or the
+		// iterator ran out of key before it fully traversed into the node.
+		if iter.Value() == nil {
+			// Append any untraversed portion of edge (prefix)
+			if iter.p < len(tree.prefix) {
+				key += strings.Join(tree.prefix[iter.p:], "")
+			}
+		}
 	}
 
-	// Walk down tree starting at node located at root
-	return tree.walk(&pathsKeyStringer{[]string{root}}, walkFn)
+	// Walk down tree starting at node located at key
+	return tree.walk(&pathsKeyStringer{[]string{key}}, walkFn)
 }
 
 // pathsKeyStringer implements KeyStringer, used for WalkFunc
