@@ -1,6 +1,8 @@
 # radixtree
 
+[![GoDoc](https://pkg.go.dev/badge/github.com/gammazero/radixtree)](https://pkg.go.dev/github.com/gammazero/radixtree)
 [![Build Status](https://travis-ci.com/gammazero/radixtree.svg)](https://travis-ci.com/gammazero/radixtree)
+![example workflow](https://github.com/gammazero/radixtree/actions/workflows/go.yml/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gammazero/radixtree)](https://goreportcard.com/report/github.com/gammazero/radixtree)
 [![codecov](https://codecov.io/gh/gammazero/radixtree/branch/master/graph/badge.svg)](https://codecov.io/gh/gammazero/radixtree)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -14,8 +16,6 @@ The implementations are optimized for Get performance and allocate 0 bytes of he
 An iterator for each type of radix tree allows a tree to be traversed one key segment at a time.  This is useful for incremental lookups of partial keys.
 
 Access is not synchronized (not concurrent safe), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
-
-[![GoDoc](https://godoc.org/github.com/gammazero/radixtree?status.svg)](https://godoc.org/github.com/gammazero/radixtree)
 
 ## Install
 
