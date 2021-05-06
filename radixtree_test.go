@@ -574,13 +574,11 @@ func testInspectError(t *testing.T, tree rtree) {
 	}
 
 	err555 := errors.New("found 555")
-	var keys []string
 	inspectFn := func(link, prefix, key string, depth, children int, value interface{}) error {
 		if value == nil {
 			// Do not count internal nodes
 			return nil
 		}
-		keys = append(keys, key)
 		switch value {
 		case 555:
 			return err555
@@ -592,8 +590,5 @@ func testInspectError(t *testing.T, tree rtree) {
 	err := tree.Inspect(inspectFn)
 	if err != err555 {
 		t.Fatal("expected", err555)
-	}
-	if len(keys) != 2 {
-		t.Errorf("expected nodes walked to be 2, got %d: %v", len(keys), keys)
 	}
 }
