@@ -558,3 +558,42 @@ func testInspectSkip(t *testing.T, tree rtree) {
 		t.Errorf("expected nodes walked to be %d, got %d: %v", len(table)-2, len(keys), keys)
 	}
 }
+
+func testInspectError(t *testing.T, tree rtree) {
+	table := map[string]int{
+		"/L1/L2":       1,
+		"/L1/L2/L3":    555,
+		"/L1/L2/L3/L4": 999,
+		"/L1/L2/L/C":   3,
+		"/L1/L2/L3/X":  999,
+	}
+
+	for key, value := range table {
+		tree.Put(key, value)
+		t.Log(dump(tree))
+	}
+
+	err555 := errors.New("found 555")
+	var keys []string
+	inspectFn := func(link, prefix, key string, depth, children int, value interface{}) error {
+		if value == nil {
+			// Do not count internal nodes
+			return nil
+		}
+		keys = append(keys, key)
+		switch value {
+		case 555:
+			return err555
+		case 999:
+			t.Fatal("should not get here")
+		}
+		return nil
+	}
+	err := tree.Inspect(inspectFn)
+	if err != err555 {
+		t.Fatal("expected", err555)
+	}
+	if len(keys) != 2 {
+		t.Errorf("expected nodes walked to be 2, got %d: %v", len(keys), keys)
+	}
+}
