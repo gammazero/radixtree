@@ -20,13 +20,16 @@ type rtree interface {
 // Use the Inspect functionality to create a function to dump the tree.
 func dump(tree rtree) string {
 	var b strings.Builder
-	tree.Inspect(func(link, prefix, key string, depth, children int, value interface{}) error {
+	err := tree.Inspect(func(link, prefix, key string, depth, children int, value interface{}) error {
 		for ; depth > 0; depth-- {
 			b.WriteString("  ")
 		}
 		b.WriteString(fmt.Sprintf("%s-> (%q, %v) key: %q children: %d\n", link, prefix, value, key, children))
 		return nil
 	})
+	if err != nil {
+		b.WriteString(fmt.Sprintln("ERROR:", err))
+	}
 	return b.String()
 }
 
@@ -81,7 +84,10 @@ func testRadixTree(t *testing.T, tree rtree) {
 	// walk path
 	t.Log(dump(tree))
 	key := "bad/key"
-	tree.WalkPath(key, walkFn)
+	err := tree.WalkPath(key, walkFn)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(kvMap) != 0 {
 		t.Error("should not have returned values, got ", kvMap)
 	}
@@ -95,7 +101,10 @@ func testRadixTree(t *testing.T, tree rtree) {
 	}
 	kvMap = map[string]interface{}{}
 	wvals = nil
-	tree.WalkPath(lastKey, walkFn)
+	err = tree.WalkPath(lastKey, walkFn)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if kvMap[lastKey] == nil {
 		t.Fatalf("expected value for %s", lastKey)
 	}
@@ -383,12 +392,16 @@ func testWalk(t *testing.T, tree rtree) {
 
 	var foundRoot bool
 	tree.Put("", "ROOT")
-	tree.WalkPath(testKey, func(key string, value interface{}) error {
+	err = tree.WalkPath(testKey, func(key string, value interface{}) error {
 		if key == "" && value == "ROOT" {
 			foundRoot = true
 		}
 		return nil
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if !foundRoot {
 		t.Error("did not find root")
 	}
