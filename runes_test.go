@@ -638,3 +638,7 @@ func TestRunesWalkSkip(t *testing.T) {
 func TestRunesInspectSkip(t *testing.T) {
 	testInspectSkip(t, new(Runes))
 }
+
+func TestRunesInspectError(t *testing.T) {
+	testInspectError(t, new(Runes))
+}

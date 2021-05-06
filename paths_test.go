@@ -464,3 +464,7 @@ func TestPathsWalkSkip(t *testing.T) {
 func TestPathsInspectSkip(t *testing.T) {
 	testInspectSkip(t, new(Paths))
 }
+
+func TestPathsInspectError(t *testing.T) {
+	testInspectError(t, new(Paths))
+}
