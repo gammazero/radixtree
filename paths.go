@@ -116,7 +116,7 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 				p++
 				continue
 			}
-		} else if child, _ := node.children[part]; child != nil {
+		} else if child := node.children[part]; child != nil {
 			node = child
 			p = 0
 			continue

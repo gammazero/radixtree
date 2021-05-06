@@ -112,7 +112,7 @@ func (tree *Runes) Put(key string, value interface{}) bool {
 				p++
 				continue
 			}
-		} else if child, _ := node.children[r]; child != nil {
+		} else if child := node.children[r]; child != nil {
 			node = child
 			p = 0
 			continue

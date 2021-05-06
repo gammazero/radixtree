@@ -389,37 +389,49 @@ func TestSimplePathWalk(t *testing.T) {
 	rt.Put("torn/ad/o", "TORNADO")
 
 	count := 0
-	rt.Walk("tom/ato", func(key KeyStringer, value interface{}) error {
+	err := rt.Walk("tom/ato", func(key KeyStringer, value interface{}) error {
 		count++
 		return nil
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if count != 1 {
 		t.Errorf("expected to visit 1 key, visited %d", count)
 	}
 
 	count = 0
-	rt.Walk("tom", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("tom", func(key KeyStringer, value interface{}) error {
 		count++
 		return nil
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if count != 2 {
 		t.Errorf("expected to visit 3 keys, visited %d", count)
 	}
 
 	count = 0
-	rt.Walk("tomx", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("tomx", func(key KeyStringer, value interface{}) error {
 		count++
 		return nil
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if count != 0 {
 		t.Errorf("expected to visit 0 keys, visited %d", count)
 	}
 
 	count = 0
-	rt.Walk("torn", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("torn", func(key KeyStringer, value interface{}) error {
 		count++
 		return nil
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if count != 1 {
 		t.Errorf("expected to visit 1 key, visited %d", count)
 	}

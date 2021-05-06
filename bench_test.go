@@ -110,7 +110,7 @@ func benchmarkWalk(filePath string, b *testing.B) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		tree.Walk("", func(k KeyStringer, value interface{}) error {
+		_ = tree.Walk("", func(k KeyStringer, value interface{}) error {
 			count++
 			return nil
 		})
@@ -135,7 +135,7 @@ func benchmarkWalkPath(filePath string, b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		count = 0
 		for _, w := range words {
-			tree.WalkPath(w, func(key string, value interface{}) error {
+			_ = tree.WalkPath(w, func(key string, value interface{}) error {
 				count++
 				return nil
 			})
@@ -193,7 +193,7 @@ func benchmarkPathsWalk(filePath string, b *testing.B) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		tree.Walk("", func(k KeyStringer, value interface{}) error {
+		_ = tree.Walk("", func(k KeyStringer, value interface{}) error {
 			count++
 			return nil
 		})
@@ -218,7 +218,7 @@ func benchmarkPathsWalkPath(filePath string, b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		count = 0
 		for _, w := range words {
-			tree.WalkPath(w, func(key string, value interface{}) error {
+			_ = tree.WalkPath(w, func(key string, value interface{}) error {
 				count++
 				return nil
 			})
