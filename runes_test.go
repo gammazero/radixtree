@@ -1,6 +1,7 @@
 package radixtree
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -317,6 +318,11 @@ func TestRunesDelete(t *testing.T) {
 		t.Log(dump(rt))
 		t.Error("worng prefix for compresses node: ", node.prefix)
 	}
+
+	// Test deleting key that does not exist
+	if rt.Delete("xyz") {
+		t.Error("expected false when deleting key 'xyz'")
+	}
 }
 
 func TestRunesBuildEdgeCases(t *testing.T) {
@@ -539,7 +545,7 @@ func TestSimpleRunesWalk(t *testing.T) {
 	rt.Put("tornado", "TORNADO")
 
 	count := 0
-	err := rt.Walk("tomato", func(key KeyStringer, value interface{}) error {
+	err := rt.Walk("tomato", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -551,7 +557,7 @@ func TestSimpleRunesWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("t", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("t", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -563,7 +569,7 @@ func TestSimpleRunesWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("to", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("to", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -575,7 +581,7 @@ func TestSimpleRunesWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("tom", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("tom", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -587,7 +593,7 @@ func TestSimpleRunesWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("tomx", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("tomx", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -599,7 +605,7 @@ func TestSimpleRunesWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("torn", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("torn", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})

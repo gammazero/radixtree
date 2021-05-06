@@ -295,20 +295,20 @@ func (tree *Paths) Walk(key string, walkFn WalkFunc) error {
 	}
 
 	// Walk down tree starting at node located at key
-	return tree.walk(&pathsKeyStringer{[]string{key}}, walkFn)
+	return tree.walk(&pathsKey{[]string{key}}, walkFn)
 }
 
-// pathsKeyStringer implements KeyStringer, used for WalkFunc
-type pathsKeyStringer struct {
+// pathsKey implements fmt.Stringer, used for WalkFunc
+type pathsKey struct {
 	parts []string
 }
 
 // String returns the string form of key segments accumulated during walk.
-func (p *pathsKeyStringer) String() string {
+func (p *pathsKey) String() string {
 	return strings.Join(p.parts, "")
 }
 
-func (tree *Paths) walk(k *pathsKeyStringer, walkFn WalkFunc) error {
+func (tree *Paths) walk(k *pathsKey, walkFn WalkFunc) error {
 	if tree.value != nil {
 		if err := walkFn(k, tree.value); err != nil {
 			if err == Skip {

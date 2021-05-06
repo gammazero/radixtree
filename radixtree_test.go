@@ -224,7 +224,7 @@ func testWalk(t *testing.T, tree rtree) {
 		}
 	}
 
-	walkFn := func(k KeyStringer, value interface{}) error {
+	walkFn := func(k fmt.Stringer, value interface{}) error {
 		// value for each walked key is correct
 		key := k.String()
 		if value != strings.ToUpper(key) {
@@ -475,7 +475,7 @@ func testWalkError(t *testing.T, tree rtree) {
 
 	walkErr := errors.New("walk error")
 	var walked int
-	walkFn := func(k KeyStringer, value interface{}) error {
+	walkFn := func(k fmt.Stringer, value interface{}) error {
 		if value == 999 {
 			return walkErr
 		}
@@ -504,7 +504,7 @@ func testWalkSkip(t *testing.T, tree rtree) {
 		t.Log(dump(tree))
 	}
 	var walked int
-	walkFn := func(k KeyStringer, value interface{}) error {
+	walkFn := func(k fmt.Stringer, value interface{}) error {
 		switch value {
 		case 555:
 			return Skip

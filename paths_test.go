@@ -1,6 +1,7 @@
 package radixtree
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -389,7 +390,7 @@ func TestSimplePathWalk(t *testing.T) {
 	rt.Put("torn/ad/o", "TORNADO")
 
 	count := 0
-	err := rt.Walk("tom/ato", func(key KeyStringer, value interface{}) error {
+	err := rt.Walk("tom/ato", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -401,7 +402,7 @@ func TestSimplePathWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("tom", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("tom", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -413,7 +414,7 @@ func TestSimplePathWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("tomx", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("tomx", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -425,7 +426,7 @@ func TestSimplePathWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("torn", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("torn", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
