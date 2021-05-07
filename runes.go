@@ -267,6 +267,8 @@ func (tree *Runes) compress() {
 // descend into the node's children. Use empty key "" to visit all nodes.
 //
 // The tree is traversed depth-first, in no guaranteed order.
+//
+// Walk can be thought of as GetItemsWithPrefix(key)
 func (tree *Runes) Walk(key string, walkFn WalkFunc) error {
 	if key != "" {
 		iter := tree.NewIterator()
@@ -325,6 +327,10 @@ func (tree *Runes) walk(k *runesKey, walkFn WalkFunc) error {
 // calling walkFn for each node that has a value.  If walkFn returns an error,
 // the walk is aborted and returns the error. If walkFn returns Skip, WalkPath
 // is aborted but does not return an error.
+//
+// The tree is traversed in the order of key symbols in the key.
+//
+// WalkPath can be thought of as GetItemsThatArePrefixOf((key)
 func (tree *Runes) WalkPath(key string, walkFn WalkPathFunc) error {
 	if tree.value != nil {
 		if err := walkFn("", tree.value); err != nil {
