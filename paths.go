@@ -4,15 +4,12 @@ import (
 	"strings"
 )
 
-// PathSeparator splits a path key into separate segments.  The default path
-// separator is forward slash.  This variable may be set to any string to allow a
-// different path separator.
-var PathSeparator = "/"
+const defaultPathSeparator = "/"
 
 // Paths is a radix tree of paths with string keys and interface{}
 // values. Paths splits keys by separator, for example, "/a/b/c" splits to
 // "/a", "/b", "/c". A different path separator string may be specified by
-// setting PathSeparator.
+// setting by calling NewPaths with a the string to use as a separator.
 //
 // Non-terminal nodes have nil values, so a stored nil value is not
 // distinguishable and is not be included in Walk or WalkPath.
@@ -20,21 +17,43 @@ type Paths struct {
 	prefix   []string
 	value    interface{}
 	children map[string]*Paths
+	pathSep  string
+}
+
+// NewPaths creates a new Paths instance allowin the path separator to be set.
+//
+// The pathSeparator splits a path key into separate segments.  The default
+// path separator is forward slash.  This variable may be set to any string to
+// allow a different path separator, multi-character strings are OK.
+func NewPaths(pathSeparator string) *Paths {
+	return &Paths{
+		pathSep: pathSeparator,
+	}
+}
+
+// PathSeparator returns this Paths instance's path separator
+func (tree *Paths) PathSeparator() string {
+	if tree.pathSep == "" {
+		tree.pathSep = defaultPathSeparator
+	}
+	return tree.pathSep
 }
 
 // PathsIterator traverses a Paths radix tree one path segment at a time.
 //
 // Note: Any modification to the tree invalidates the iterator.
 type PathsIterator struct {
-	p    int
-	node *Paths
+	p       int
+	node    *Paths
+	pathSep string
 }
 
 // NewIterator returns a new PathsIterator instance that begins iterating
 // from the root of the tree.
 func (tree *Paths) NewIterator() *PathsIterator {
 	return &PathsIterator{
-		node: tree,
+		node:    tree,
+		pathSep: tree.PathSeparator(),
 	}
 }
 
@@ -42,8 +61,9 @@ func (tree *Paths) NewIterator() *PathsIterator {
 // iterator into two iterators that can take separate paths.
 func (it *PathsIterator) Copy() *PathsIterator {
 	return &PathsIterator{
-		p:    it.p,
-		node: it.node,
+		p:       it.p,
+		node:    it.node,
+		pathSep: it.pathSep,
 	}
 }
 
@@ -61,7 +81,7 @@ func (it *PathsIterator) Next(part string) bool {
 	if part == "" {
 		return false
 	}
-	part = strings.Trim(part, PathSeparator)
+	part = strings.Trim(part, it.pathSep)
 
 	if it.p < len(it.node.prefix) {
 		if part == it.node.prefix[it.p] {
@@ -91,8 +111,9 @@ func (it *PathsIterator) Value() interface{} {
 // Get returns the value stored at the given key. Returns nil for internal
 // nodes or for nodes with a value of nil.
 func (tree *Paths) Get(key string) interface{} {
+	pathSep := tree.PathSeparator()
 	iter := tree.NewIterator()
-	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
+	for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
 		if !iter.Next(part) {
 			return nil
 		}
@@ -115,7 +136,8 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 	)
 	node := tree
 
-	for part, next := pathNext(key, 0); part != ""; part, next = pathNext(key, next) {
+	pathSep := tree.PathSeparator()
+	for part, next := pathNext(key, pathSep, 0); part != ""; part, next = pathNext(key, pathSep, next) {
 		if p < len(node.prefix) {
 			if part == node.prefix[p] {
 				p++
@@ -136,7 +158,7 @@ func (tree *Paths) Put(key string, value interface{}) bool {
 		if next != -1 {
 			newChild.prefix = []string{}
 			for next != -1 {
-				part, next = pathNext(key, next)
+				part, next = pathNext(key, pathSep, next)
 				newChild.prefix = append(newChild.prefix, part)
 			}
 		}
@@ -178,6 +200,7 @@ func (tree *Paths) split(p int) {
 	split := &Paths{
 		children: tree.children,
 		value:    tree.value,
+		pathSep:  tree.PathSeparator(),
 	}
 	if p < len(tree.prefix)-1 {
 		split.prefix = tree.prefix[p+1:]
@@ -201,7 +224,8 @@ func (tree *Paths) Delete(key string) bool {
 		parts []string
 		p     int
 	)
-	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
+	pathSep := tree.PathSeparator()
+	for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
 		if p < len(node.prefix) {
 			if part == node.prefix[p] {
 				p++
@@ -282,11 +306,12 @@ func (tree *Paths) compress() {
 //
 // Walk can be thought of as GetItemsWithPrefix(key)
 func (tree *Paths) Walk(key string, walkFn WalkFunc) error {
+	pathSep := tree.PathSeparator()
 	var parts []string
 	// Traverse tree to get to node at key
 	if key != "" {
 		iter := tree.NewIterator()
-		for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
+		for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
 			if !iter.Next(part) {
 				return nil
 			}
@@ -304,17 +329,18 @@ func (tree *Paths) Walk(key string, walkFn WalkFunc) error {
 	}
 
 	// Walk down tree starting at node located at key
-	return tree.walk(&pathsKey{parts}, walkFn)
+	return tree.walk(&pathsKey{parts, pathSep}, walkFn)
 }
 
 // pathsKey implements fmt.Stringer, used for WalkFunc
 type pathsKey struct {
-	parts []string
+	parts   []string
+	pathSep string
 }
 
 // String returns the string form of key segments accumulated during walk.
 func (p *pathsKey) String() string {
-	return strings.Join(p.parts, PathSeparator)
+	return strings.Join(p.parts, p.pathSep)
 }
 
 func (tree *Paths) walk(k *pathsKey, walkFn WalkFunc) error {
@@ -354,8 +380,9 @@ func (tree *Paths) WalkPath(key string, walkFn WalkPathFunc) error {
 			return err
 		}
 	}
+	pathSep := tree.PathSeparator()
 	iter := tree.NewIterator()
-	for part, i := pathNext(key, 0); part != ""; part, i = pathNext(key, i) {
+	for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
 		if !iter.Next(part) {
 			return nil
 		}
@@ -392,7 +419,8 @@ func (tree *Paths) Inspect(inspectFn InspectFunc) error {
 }
 
 func (tree *Paths) inspect(link, key string, depth int, inspectFn InspectFunc) error {
-	pfx := strings.Join(tree.prefix, "/")
+	pathSep := tree.PathSeparator()
+	pfx := strings.Join(tree.prefix, pathSep)
 	var keyParts []string
 	if key != "" {
 		keyParts = append(keyParts, key)
@@ -403,7 +431,7 @@ func (tree *Paths) inspect(link, key string, depth int, inspectFn InspectFunc) e
 	if pfx != "" {
 		keyParts = append(keyParts, pfx)
 	}
-	key = strings.Join(keyParts, "/")
+	key = strings.Join(keyParts, pathSep)
 	err := inspectFn(link, pfx, key, depth, len(tree.children), tree.value)
 	if err != nil {
 		if err == Skip {
@@ -423,14 +451,14 @@ func (tree *Paths) inspect(link, key string, depth int, inspectFn InspectFunc) e
 // pathNext splits path strings by a path separator character. For
 // example, "/a/b/c" -> ("a", 3), ("b", 5), ("c", -1) in successive
 // calls. It does not allocate any heap memory.
-func pathNext(path string, start int) (string, int) {
+func pathNext(path, pathSep string, start int) (string, int) {
 	if len(path) == 0 || start < 0 || start > len(path)-1 {
 		return "", -1
 	}
-	sepLen := len(PathSeparator)
+	sepLen := len(pathSep)
 
 	// Advance start past separators
-	for strings.HasPrefix(path[start:], PathSeparator) {
+	for strings.HasPrefix(path[start:], pathSep) {
 		start += sepLen
 	}
 	if start == len(path) {
@@ -438,7 +466,7 @@ func pathNext(path string, start int) (string, int) {
 	}
 
 	// Segment ends at next separator or end of path
-	end := strings.Index(path[start+1:], PathSeparator)
+	end := strings.Index(path[start+1:], pathSep)
 	if end == -1 || end == len(path)-sepLen {
 		return path[start:], -1
 	}
@@ -446,7 +474,7 @@ func pathNext(path string, start int) (string, int) {
 
 	// Next place to look is next non-separator past end, if any
 	next := end + sepLen
-	for strings.HasPrefix(path[next:], PathSeparator) {
+	for strings.HasPrefix(path[next:], pathSep) {
 		next += sepLen
 	}
 	if next == len(path) {

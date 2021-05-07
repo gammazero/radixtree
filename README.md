@@ -38,23 +38,27 @@ func main() {
     rt.Put("tornado", "TORNADO")
 
     val := rt.Get("tom")
-    fmt.Println("Found", val)      // output: Found TOM
+    fmt.Println("Found", val)
+    // Output: Found TOM
 
     // Find all items whose keys start with "tom"
-    var vals []interface{}
     rt.Walk("tom", func(key fmt.Stringer, value interface{}) error {
-        vals = append(vals, value)
+        fmt.Println(value)
         return nil
     })
-    fmt.Println(vals)              // output: [TOM, TOMATO, TOMMY]
+    // Output:
+    // TOM
+    // TOMATO
+    // TOMMY
 
     // Find all items whose keys are a prefix of "tomato"
-    vals = vals[0:0]
     rt.WalkPath("tomato", func(key string, value interface{}) error {
-        vals = append(vals, value)
+        fmt.Println(value)
         return nil
     })
-    fmt.Println(vals)              // output: [TOM, TOMATO]
+    // Output:
+    // TOM
+    // TOMATO
 
     // Find each item whose key is a prefix of "tomato", using iterator
     iter := rt.NewIterator()
@@ -63,15 +67,21 @@ func main() {
             break
         }
         if val := iter.Value(); val != nil {
-            fmt.Println(val)       // output: TOM
-        }                          // output: TOMATO
+            fmt.Println(val)
+        }
     }
+    // Output:
+    // TOM
+    // TOMATO
 
     if rt.Delete("tom") {
-        fmt.Println("Deleted tom") // output: Deleted tom
+        fmt.Println("Deleted tom")
     }
+    // Output: Deleted tom
+
     val = rt.Get("tom")
-    fmt.Println("Found", val)      // output: Found <nil>
+    fmt.Println("Found", val)
+    // Output: Found <nil>
 }
 ```
 

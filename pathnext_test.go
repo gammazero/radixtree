@@ -22,9 +22,10 @@ func TestPathNext(t *testing.T) {
 		{"home/dverlaine/", []string{"home", "dverlaine"}, []int{5, -1}},
 	}
 
+	const pathSep = "/"
 	for _, c := range cases {
 		var partNum int
-		for part, next := pathNext(c.key, 0); ; part, next = pathNext(c.key, next) {
+		for part, next := pathNext(c.key, pathSep, 0); ; part, next = pathNext(c.key, pathSep, next) {
 			if part != c.parts[partNum] {
 				t.Errorf("expected part %d of key %q to be %q, got '%s'", partNum, c.key, c.parts[partNum], part)
 			}
@@ -43,11 +44,6 @@ func TestPathNext(t *testing.T) {
 }
 
 func TestPathNextMultichar(t *testing.T) {
-	PathSeparator = "--"
-	defer func() {
-		PathSeparator = "/"
-	}()
-
 	cases := []struct {
 		key     string
 		parts   []string
@@ -64,9 +60,10 @@ func TestPathNextMultichar(t *testing.T) {
 		{"home--dverlaine--", []string{"home", "dverlaine"}, []int{6, -1}},
 	}
 
+	const pathSep = "--"
 	for _, c := range cases {
 		var partNum int
-		for part, next := pathNext(c.key, 0); ; part, next = pathNext(c.key, next) {
+		for part, next := pathNext(c.key, pathSep, 0); ; part, next = pathNext(c.key, pathSep, next) {
 			if part != c.parts[partNum] {
 				t.Errorf("expected part %d of key %q to be %q, got '%s'", partNum, c.key, c.parts[partNum], part)
 			}
@@ -113,7 +110,7 @@ func TestPathNextBeginEnd(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		part, next := pathNext(c.path, c.start)
+		part, next := pathNext(c.path, "/", c.start)
 		if part != c.part {
 			t.Errorf("expected part %q starting at %d in path %q, got %q", c.part, c.start, c.path, part)
 		}

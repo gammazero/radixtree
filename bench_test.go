@@ -48,7 +48,6 @@ func BenchmarkWeb2aRunesWalkPath(b *testing.B) {
 }
 
 func BenchmarkWeb2aPathsPut(b *testing.B) {
-	PathSeparator = " "
 	benchmarkPathsPut(web2aPath, b)
 }
 
