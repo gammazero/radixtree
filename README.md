@@ -6,15 +6,13 @@
 [![codecov](https://codecov.io/gh/gammazero/radixtree/branch/master/graph/badge.svg)](https://codecov.io/gh/gammazero/radixtree)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Package `radixtree` implements multiple forms of an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree.  This data structure is useful to quickly looking up data without necessarily looking at the entire key, or when finding items that match some prefix of a search key (i.e. are found along the way when retrieving an item identified by a key).  When different values are stored using keys that have a common prefix, the common part of the key is only stored once.  Consider this when keys are similar an OID, filepath, geohash, network address, etc.
+Package `radixtree` implements multiple forms of an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree.  This data structure is useful to quickly lookup data, using only the portion of the key that prefixes existing data.  It is also useful for finding items whose keys are a prefix of a search key (i.e. are found along the way when retrieving an item identified by a key), or when finding items whose keys are prefixed by the serach key (i.e. are found at or after a key).  When different values are stored using keys that have a common prefix, the common part of the key is only stored once.  Consider this when keys are similar to an OID, filepath, geohash, network address, etc.
 
 This radix tree is adaptive in the sense that nodes are not constant size, having as few or many children as needed, up to the number of different key segments to traverse to the next branch or value.
 
-The implementations are optimized for Get performance and allocate 0 bytes of heap memory per Get; therefore no garbage to collect.  Once the radix tree is built, it can be repeatedly searched very quickly.
+An iterator for each type of radix tree allows a tree to be traversed one key segment at a time.  This is useful for incremental lookups of partial keys.  Iterators can be copied in order to branched a search, and copies iterated concurrently.
 
-An iterator for each type of radix tree allows a tree to be traversed one key segment at a time.  This is useful for incremental lookups of partial keys.
-
-Access is not synchronized (not concurrent safe), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
+The implementations are optimized for Get performance and allocates 0 bytes of heap memory per Get; therefore no garbage to collect.  Once the radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the radixtree. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
 
 ## Install
 
@@ -36,35 +34,54 @@ func main() {
     rt := new(radixtree.Runes)
     rt.Put("tomato", "TOMATO")
     rt.Put("tom", "TOM")
+    rt.Put("tommy", "TOMMY")
     rt.Put("tornado", "TORNADO")
 
     val := rt.Get("tom")
-    fmt.Println("Found", val)      // output: Found TOM
+    fmt.Println("Found", val)
+    // Output: Found TOM
 
-    var vals []interface{}
-    rt.WalkPath("tomato", func(key string, value interface{}) error {
-        vals = append(vals, value)
+    // Find all items whose keys start with "tom"
+    rt.Walk("tom", func(key fmt.Stringer, value interface{}) error {
+        fmt.Println(value)
         return nil
     })
-    fmt.Println(vals)              // output: [TOM, TOMATO]
+    // Output:
+    // TOM
+    // TOMATO
+    // TOMMY
 
+    // Find all items whose keys are a prefix of "tomato"
+    rt.WalkPath("tomato", func(key string, value interface{}) error {
+        fmt.Println(value)
+        return nil
+    })
+    // Output:
+    // TOM
+    // TOMATO
+
+    // Find each item whose key is a prefix of "tomato", using iterator
     iter := rt.NewIterator()
     for _, r := range "tomato" {
         if !iter.Next(r) {
             break
         }
-        val := iter.Value()
-        if val == nil {
-            continue
+        if val := iter.Value(); val != nil {
+            fmt.Println(val)
         }
-        fmt.Println(val)           // output: tom
-    }                              // output: tomato
-       
-    if rt.Delete("tom") {
-        fmt.Println("Deleted tom") // output: Deleted tom
     }
+    // Output:
+    // TOM
+    // TOMATO
+
+    if rt.Delete("tom") {
+        fmt.Println("Deleted tom")
+    }
+    // Output: Deleted tom
+
     val = rt.Get("tom")
-    fmt.Println("Found", val)      // output: Found <nil>
+    fmt.Println("Found", val)
+    // Output: Found <nil>
 }
 ```
 

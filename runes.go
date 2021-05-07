@@ -29,7 +29,8 @@ func (tree *Runes) NewIterator() *RunesIterator {
 }
 
 // Copy makes a copy of the current iterator.  This allows branching an
-// iterator into two iterators that can take separate paths.
+// iterator into two iterators that can take separate paths.  These iterators
+// do not affect eachother and can be iterated concurrently.
 func (it *RunesIterator) Copy() *RunesIterator {
 	return &RunesIterator{
 		p:    it.p,
@@ -263,10 +264,12 @@ func (tree *Runes) compress() {
 
 // Walk visits all nodes whose keys match or are are prefixed by the specified
 // key, calling walkFn for each value found. If walkFn returns an error, the
-// walk is aborted. If walkFn returns Skip, Walk will not descend into the
-// node's children. Use empty key "" to visit all nodes.
+// walk is aborted and returns the error. If walkFn returns Skip, Walk will not
+// descend into the node's children. Use empty key "" to visit all nodes.
 //
 // The tree is traversed depth-first, in no guaranteed order.
+//
+// Walk can be thought of as GetItemsWithPrefix(key)
 func (tree *Runes) Walk(key string, walkFn WalkFunc) error {
 	if key != "" {
 		iter := tree.NewIterator()
@@ -288,20 +291,20 @@ func (tree *Runes) Walk(key string, walkFn WalkFunc) error {
 	}
 
 	// Walk down tree starting at node located at key
-	return tree.walk(&runesKeyStringer{[]rune(key)}, walkFn)
+	return tree.walk(&runesKey{[]rune(key)}, walkFn)
 }
 
-// runesKeyStringer implements KeyStringer, used for WalkFunc
-type runesKeyStringer struct {
+// runesKey implements fmt.Stringer, used for WalkFunc
+type runesKey struct {
 	runes []rune
 }
 
 // String returns the string form of key elements accumulated during walk.
-func (k runesKeyStringer) String() string {
+func (k runesKey) String() string {
 	return string(k.runes)
 }
 
-func (tree *Runes) walk(k *runesKeyStringer, walkFn WalkFunc) error {
+func (tree *Runes) walk(k *runesKey, walkFn WalkFunc) error {
 	if tree.value != nil {
 		if err := walkFn(k, tree.value); err != nil {
 			if err == Skip {
@@ -322,7 +325,13 @@ func (tree *Runes) walk(k *runesKeyStringer, walkFn WalkFunc) error {
 }
 
 // WalkPath walks the path in tree from the root to the node at the given key,
-// calling walkFn for each node that has a value.
+// calling walkFn for each node that has a value.  If walkFn returns an error,
+// the walk is aborted and returns the error. If walkFn returns Skip, WalkPath
+// is aborted but does not return an error.
+//
+// The tree is traversed in the order of key symbols in the key.
+//
+// WalkPath can be thought of as GetItemsThatArePrefixOf((key)
 func (tree *Runes) WalkPath(key string, walkFn WalkPathFunc) error {
 	if tree.value != nil {
 		if err := walkFn("", tree.value); err != nil {
@@ -337,10 +346,8 @@ func (tree *Runes) WalkPath(key string, walkFn WalkPathFunc) error {
 		if !iter.Next(r) {
 			return nil
 		}
-		value := iter.Value()
-		if value != nil {
-			err := walkFn(string(key[0:i+1]), value)
-			if err != nil {
+		if value := iter.Value(); value != nil {
+			if err := walkFn(key[:i+1], value); err != nil {
 				if err == Skip {
 					return nil
 				}

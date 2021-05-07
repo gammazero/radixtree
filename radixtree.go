@@ -1,16 +1,12 @@
 package radixtree
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // Skip is a special error return from WalkFunc and WalkPathFunc
 var Skip = errors.New("skip")
-
-// KeyStringer is the interface to a key element accumulator, used to get the
-// key of the current node during Walk.
-type KeyStringer interface {
-	// String returns the string form of key elements accumulated during walk.
-	String() string
-}
 
 // WalkFunc is the type of the function called for each value visited by Walk.
 // The key argument contains the elements of the key at which the value is
@@ -19,7 +15,7 @@ type KeyStringer interface {
 // If an error is returned, processing of Walk stops.  The sole exception is
 // when the function returns the special value Skip.  When the function returns
 // Skip, Walk will not descend into any children of the current node.
-type WalkFunc func(key KeyStringer, value interface{}) error
+type WalkFunc func(key fmt.Stringer, value interface{}) error
 
 // WalkPathFunc is the type of the function called for each value visited by WalkPath.
 // The key argument is the key at which the value is stored.

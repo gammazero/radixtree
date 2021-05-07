@@ -1,6 +1,7 @@
 package radixtree
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -14,11 +15,11 @@ func TestPathsAddEnd(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.children["/L1"]
+	node := tree.children["L1"]
 	if node == nil {
-		t.Fatal("expected child at '/L1'")
+		t.Fatal("expected child at 'L1'")
 	}
-	if strings.Join(node.prefix, "") != "/L2" {
+	if strings.Join(node.prefix, "") != "L2" {
 		t.Fatal("wrong prefix:", node.prefix)
 	}
 	if node.value != 1 {
@@ -36,11 +37,11 @@ func TestPathsAddEnd(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node = tree.children["/L1"]
+	node = tree.children["L1"]
 	if node == nil {
-		t.Fatal("expected child at '/L1'")
+		t.Fatal("expected child at 'L1'")
 	}
-	if strings.Join(node.prefix, "") != "/L2" {
+	if strings.Join(node.prefix, "") != "L2" {
 		t.Fatal("wrong prefix:", node.prefix)
 	}
 	if node.value != 1 {
@@ -49,9 +50,9 @@ func TestPathsAddEnd(t *testing.T) {
 	if len(node.children) != 1 {
 		t.Fatal("expected 1 child")
 	}
-	node = node.children["/L3A"]
+	node = node.children["L3A"]
 	if node == nil {
-		t.Fatal("expected child at '/L3A'")
+		t.Fatal("expected child at 'L3A'")
 	}
 	if len(node.prefix) != 0 {
 		t.Fatal("expected no prefix, got ", node.prefix)
@@ -65,39 +66,39 @@ func TestPathsAddEnd(t *testing.T) {
 }
 
 func TestPathsAddBranch(t *testing.T) {
-	tree := new(Paths)
-	tree.Put("/L1/L2", 1)
-	tree.Put("/L1/L2/L3A", 2)
+	tree := NewPaths(".")
+	tree.Put(".L1.L2", 1)
+	tree.Put(".L1.L2.L3A", 2)
 
-	// (root) /L1-> ("/L2", 1) /L3A-> ("", 2)
-	// add "/L1/L2/L3B/L4", 3
-	// (root) /L1-> ("/L2", 1) /L3A-> ("", 2)
-	//                         /L3B-> ("/L4", 3)
-	tree.Put("/L1/L2/L3B/L4", 3)
+	// (root) .L1-> (".L2", 1) .L3A-> ("", 2)
+	// add ".L1.L2.L3B.L4", 3
+	// (root) .L1-> (".L2", 1) .L3A-> ("", 2)
+	//                         .L3B-> (".L4", 3)
+	tree.Put(".L1.L2.L3B.L4", 3)
 	t.Log(dump(tree))
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.children["/L1"]
+	node := tree.children["L1"]
 	if node == nil {
-		t.Fatal("expected child at '/L1'")
+		t.Fatal("expected child at 'L1'")
 	}
 	if len(node.children) != 2 {
 		t.Fatal("expected 2 children")
 	}
-	node2 := node.children["/L3B"]
+	node2 := node.children["L3B"]
 	if node2 == nil {
-		t.Fatal("expected child at '/L3B'")
+		t.Fatal("expected child at 'L3B'")
 	}
-	if strings.Join(node2.prefix, "") != "/L4" {
+	if strings.Join(node2.prefix, "") != "L4" {
 		t.Fatal("wrong prefix:", node2.prefix)
 	}
 	if node2.value != 3 {
 		t.Fatal("expected value 3, got ", node2.value)
 	}
-	node2 = node.children["/L3A"]
+	node2 = node.children["L3A"]
 	if node2 == nil {
-		t.Fatal("expected child at '/L3A'")
+		t.Fatal("expected child at 'L3A'")
 	}
 }
 
@@ -119,9 +120,9 @@ func TestPathsAddBranchToBranch(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.children["/L1"]
+	node := tree.children["L1"]
 	if node == nil {
-		t.Fatal("expected child at '/L1'")
+		t.Fatal("expected child at 'L1'")
 	}
 	if len(node.prefix) != 0 {
 		t.Fatal("expected no prefix, got ", node.prefix)
@@ -132,19 +133,19 @@ func TestPathsAddBranchToBranch(t *testing.T) {
 	if len(node.children) != 2 {
 		t.Fatal("expected 2 children, got ", len(node.children))
 	}
-	node2 := node.children["/L2B"]
+	node2 := node.children["L2B"]
 	if node2 == nil {
-		t.Fatal("Expected child at '/L2B'")
+		t.Fatal("Expected child at 'L2B'")
 	}
-	if strings.Join(node2.prefix, "") != "/L3C" {
-		t.Fatal("expected prefix '/L3C', got ", node2.prefix)
+	if strings.Join(node2.prefix, "") != "L3C" {
+		t.Fatal("expected prefix 'L3C', got ", node2.prefix)
 	}
 	if node2.value != 4 {
 		t.Fatal("expected value of 4, got ", node2.value)
 	}
-	node2 = node.children["/L2"]
+	node2 = node.children["L2"]
 	if node2 == nil {
-		t.Fatal("expected child at '/L2'")
+		t.Fatal("expected child at 'L2'")
 	}
 	if len(node2.prefix) != 0 {
 		t.Fatal("expected no prefix, got ", node2.prefix)
@@ -178,9 +179,9 @@ func TestPathsAddExisting(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.children["/L1"]
+	node := tree.children["L1"]
 	if node == nil {
-		t.Fatal("expected child at '/L1'")
+		t.Fatal("expected child at 'L1'")
 	}
 	if len(node.prefix) != 0 {
 		t.Fatal("expected no prefix, got ", node.prefix)
@@ -215,16 +216,16 @@ func TestPathsDelete(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.children["/L1"]
+	node := tree.children["L1"]
 	if node == nil {
-		t.Fatal("expected child at '/L1'")
+		t.Fatal("expected child at 'L1'")
 	}
 	if len(node.children) != 2 {
 		t.Fatal("expected 2 children, got ", node.children)
 	}
-	node = node.children["/L2"]
+	node = node.children["L2"]
 	if node == nil {
-		t.Fatal("expected child at '/L2'")
+		t.Fatal("expected child at 'L2'")
 	}
 	if len(node.children) != 2 {
 		t.Fatal("expected 2 children, got ", node.children)
@@ -249,22 +250,22 @@ func TestPathsDelete(t *testing.T) {
 	if len(tree.children) != 1 {
 		t.Fatal("expected one child")
 	}
-	node = tree.children["/L1"]
+	node = tree.children["L1"]
 	if node == nil {
-		t.Fatal("expected child at '/L1'")
+		t.Fatal("expected child at 'L1'")
 	}
 	if len(node.children) != 2 {
 		t.Fatal("expected 2 children, got ", node.children)
 	}
-	node = node.children["/L2"]
+	node = node.children["L2"]
 	if node == nil {
-		t.Fatal("expected child at '/L2'")
+		t.Fatal("expected child at 'L2'")
 	}
 	if len(node.children) != 0 {
 		t.Fatal("expected 0 children, got ", node.children)
 	}
-	if strings.Join(node.prefix, "") != "/L3A" {
-		t.Fatal("expected prefix '/L3A', got ", node.prefix)
+	if strings.Join(node.prefix, "") != "L3A" {
+		t.Fatal("expected prefix 'L3A', got ", node.prefix)
 	}
 	if node.value != 2 {
 		t.Fatal("expected value of 2, got ", node.value)
@@ -278,8 +279,8 @@ func TestPathsDelete(t *testing.T) {
 	if !tree.Delete("/L1/L2B/L3C") {
 		t.Error("did not delete \"/L1/L2B/L3C\"")
 	}
-	node = tree.children["/L1"]
-	if _, ok := node.children["/L2B"]; ok {
+	node = tree.children["L1"]
+	if _, ok := node.children["L2B"]; ok {
 		t.Log(dump(tree))
 		t.Error("deleted leaf should have been pruned")
 	}
@@ -288,14 +289,14 @@ func TestPathsDelete(t *testing.T) {
 	// (root) /L1-> ("", 5) /L2-> ("/L3A", 2)
 	// delete /L1
 	// (root) /L1-> ("/L2/L3A", 2)
-	if !tree.Delete("/L1") {
+	if !tree.Delete("L1") {
 		t.Error("did not delete \"/L1/L2B/L3C\"")
 	}
-	node = tree.children["/L1"]
+	node = tree.children["L1"]
 	if node == nil {
 		t.Fatal("expected node at \"L1\"")
 	}
-	if strings.Join(node.prefix, "") != "/L2/L3A" {
+	if strings.Join(node.prefix, "/") != "L2/L3A" {
 		t.Log(dump(tree))
 		t.Error("worng prefix for compresses node:", strings.Join(node.prefix, ""))
 	}
@@ -309,11 +310,11 @@ func TestPathsDelete(t *testing.T) {
 	if !tree.Delete("/L1/L2/L3A/L4") {
 		t.Error("did not delete \"/L1/L2/L3A/L4\"")
 	}
-	node = tree.children["/L1"]
+	node = tree.children["L1"]
 	if node == nil {
 		t.Fatal("expected node at \"L1\"")
 	}
-	if strings.Join(node.prefix, "") != "/L2/L3A" {
+	if strings.Join(node.prefix, "/") != "L2/L3A" {
 		t.Log(dump(tree))
 		t.Error("worng prefix for compresses node:", strings.Join(node.prefix, ""))
 	}
@@ -333,51 +334,54 @@ func TestPathsCopyIterator(t *testing.T) {
 	//                         /L3B-> ("/L4", 3)
 
 	iter := tree.NewIterator()
-	if iter.Next("/x") {
-		t.Fatal("/x should not have advanced iterator")
+	if iter.Next("") {
+		t.Fatal("\"\" should not have advanced iterator")
 	}
-	if !iter.Next("/L1") {
-		t.Fatal("/L1 should have advanced iterator")
+	if iter.Next("x") {
+		t.Fatal("x should not have advanced iterator")
+	}
+	if !iter.Next("L1") {
+		t.Fatal("L1 should have advanced iterator")
 	}
 	if iter.Value() != nil {
 		t.Fatal("should not have value at /L1")
 	}
-	if !iter.Next("/L2") {
-		t.Fatal("/L2 should have advanced iterator")
+	if !iter.Next("L2") {
+		t.Fatal("L2 should have advanced iterator")
 	}
 	if iter.Value() != 1 {
-		t.Fatal("expected value 1 at /L2, got ", iter.Value())
+		t.Fatal("expected value 1 at L2, got ", iter.Value())
 	}
-	if iter.Next("/L4") {
-		t.Fatal("/L4 should not have advanced iterator")
+	if iter.Next("L4") {
+		t.Fatal("L4 should not have advanced iterator")
 	}
 
 	// branch iterator
 	iterB := iter.Copy()
-	if !iterB.Next("/L3B") {
-		t.Fatal("/L3B should have advanced iterator")
+	if !iterB.Next("L3B") {
+		t.Fatal("L3B should have advanced iterator")
 	}
 	if iterB.Value() != nil {
-		t.Fatal("should not have value at /L3B")
+		t.Fatal("should not have value at L3B")
 	}
-	if !iterB.Next("/L4") {
-		t.Fatal("/L4 should have advanced iterator")
+	if !iterB.Next("L4") {
+		t.Fatal("L4 should have advanced iterator")
 	}
 	if iterB.Value() != 3 {
-		t.Fatal("expected value 3 at /L4, got ", iterB.Value())
+		t.Fatal("expected value 3 at L4, got ", iterB.Value())
 	}
-	if iterB.Next("/L4") {
-		t.Fatal("/L4 should not have advanced iterator")
+	if iterB.Next("L4") {
+		t.Fatal("L4 should not have advanced iterator")
 	}
 
-	if !iter.Next("/L3A") {
-		t.Fatal("/L3A should have advanced iterator")
+	if !iter.Next("L3A") {
+		t.Fatal("L3A should have advanced iterator")
 	}
 	if iter.Value() != 2 {
-		t.Fatal("expected value 2 at /L3A, got ", iter.Value())
+		t.Fatal("expected value 2 at L3A, got ", iter.Value())
 	}
-	if iter.Next("/L3B") {
-		t.Fatal("/L3B should not have advanced iterator")
+	if iter.Next("L3B") {
+		t.Fatal("L3B should not have advanced iterator")
 	}
 
 }
@@ -389,7 +393,7 @@ func TestSimplePathWalk(t *testing.T) {
 	rt.Put("torn/ad/o", "TORNADO")
 
 	count := 0
-	err := rt.Walk("tom/ato", func(key KeyStringer, value interface{}) error {
+	err := rt.Walk("tom/ato", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -401,7 +405,7 @@ func TestSimplePathWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("tom", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("tom", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -413,7 +417,7 @@ func TestSimplePathWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("tomx", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("tomx", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})
@@ -425,7 +429,7 @@ func TestSimplePathWalk(t *testing.T) {
 	}
 
 	count = 0
-	err = rt.Walk("torn", func(key KeyStringer, value interface{}) error {
+	err = rt.Walk("torn", func(key fmt.Stringer, value interface{}) error {
 		count++
 		return nil
 	})

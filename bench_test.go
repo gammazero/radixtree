@@ -2,6 +2,7 @@ package radixtree
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"testing"
 )
@@ -47,7 +48,6 @@ func BenchmarkWeb2aRunesWalkPath(b *testing.B) {
 }
 
 func BenchmarkWeb2aPathsPut(b *testing.B) {
-	PathSeparator = ' '
 	benchmarkPathsPut(web2aPath, b)
 }
 
@@ -110,7 +110,7 @@ func benchmarkWalk(filePath string, b *testing.B) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		_ = tree.Walk("", func(k KeyStringer, value interface{}) error {
+		_ = tree.Walk("", func(k fmt.Stringer, value interface{}) error {
 			count++
 			return nil
 		})
@@ -193,7 +193,7 @@ func benchmarkPathsWalk(filePath string, b *testing.B) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		_ = tree.Walk("", func(k KeyStringer, value interface{}) error {
+		_ = tree.Walk("", func(k fmt.Stringer, value interface{}) error {
 			count++
 			return nil
 		})

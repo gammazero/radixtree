@@ -191,45 +191,54 @@ func testRoot(t *testing.T, tree rtree) {
 func testWalk(t *testing.T, tree rtree) {
 	keys := []string{
 		"bird",
-		"/rat",
-		"/bat",
-		"/rats",
-		"/ratatouille",
-		"/rat/whiskey",            // visited by 2
-		"/rat/whiskers",           // visited by 2
-		"/rat/whisperer",          // visited by 2, 3
-		"/rat/winks/wisely/once",  // visited by 5, 6
-		"/rat/winks/wisely/x/y/z", // visited by 5, 6, 7
-		"/rat/winks/wryly",        // visited by 5
+		"rat",
+		"bat",
+		"rats",
+		"ratatouille",
+		"rat/whis/key",           // visited by 2
+		"rat/whis/kers",          // visited by 2
+		"rat/whis/per/er",        // visited by 2, 3
+		"rat/winks/wisely/once",  // visited by 5, 6
+		"rat/winks/wisely/x/y/z", // visited by 5, 6, 7
+		"rat/winks/wryly",        // visited by 5
 	}
 
 	notKeys := []string{
-		"birds",                  // 0
-		"/rat/whiz",              // 1
-		"/rat/whis",              // 2
-		"/rat/whisper",           // 3
-		"/rat/whiskey/shot",      // 4
-		"/rat/winks",             // 5
-		"/rat/winks/wisely",      // 6
-		"/rat/winks/wisely/x/y",  // 7
-		"/rat/winks/wisely/x/w",  // 8
-		"/rat/winks/wisely/only", // 9
+		"birds",                 // 0
+		"rat/whiz",              // 1
+		"rat/whis",              // 2
+		"rat/whis/per",          // 3
+		"rat/whiskey/shot",      // 4
+		"rat/winks",             // 5
+		"rat/winks/wisely",      // 6
+		"rat/winks/wisely/x/y",  // 7
+		"rat/winks/wisely/x/w",  // 8
+		"rat/winks/wisely/only", // 9
 	}
 
 	visited := make(map[string]int, len(keys))
 
+	keyToValue := func(key string) string {
+		f := func(r rune) rune {
+			if r == '/' {
+				return '-'
+			}
+			return r
+		}
+		return strings.Map(f, strings.ToUpper(strings.Trim(key, "/")))
+	}
+
 	for _, key := range keys {
-		if isNew := tree.Put(key, strings.ToUpper(key)); !isNew {
+		if isNew := tree.Put(key, keyToValue(key)); !isNew {
 			t.Errorf("expected key %s to be missing", key)
 		}
 	}
 
-	walkFn := func(k KeyStringer, value interface{}) error {
+	walkFn := func(k fmt.Stringer, value interface{}) error {
 		// value for each walked key is correct
 		key := k.String()
-		if value != strings.ToUpper(key) {
-			return fmt.Errorf("expected key %s to have value %v, got %v", key, strings.ToUpper(key), value)
-			//t.Errorf("expected key %s to have value %v, got %v", key, strings.ToUpper(key), value)
+		if value != keyToValue(key) {
+			return fmt.Errorf("expected key %s to have value %v, got %v", key, keyToValue(key), value)
 		}
 		count := visited[key]
 		visited[key] = count + 1
@@ -252,12 +261,12 @@ func testWalk(t *testing.T, tree rtree) {
 	}
 
 	expectCounts := map[string]int{
-		"/rat/whiskey":            1, // visited by 2
-		"/rat/whiskers":           1, // visited by 2
-		"/rat/whisperer":          2, // visited by 2, 3
-		"/rat/winks/wisely/once":  2, // visited by 5, 6
-		"/rat/winks/wisely/x/y/z": 3, // visited by 5, 6, 7
-		"/rat/winks/wryly":        1, // visited by 5
+		"rat/whis/key":           1, // visited by 2
+		"rat/whis/kers":          1, // visited by 2
+		"rat/whis/per/er":        2, // visited by 2, 3
+		"rat/winks/wisely/once":  2, // visited by 5, 6
+		"rat/winks/wisely/x/y/z": 3, // visited by 5, 6, 7
+		"rat/winks/wryly":        1, // visited by 5
 	}
 
 	for key, count := range visited {
@@ -283,7 +292,7 @@ func testWalk(t *testing.T, tree rtree) {
 
 	visited = make(map[string]int, len(keys))
 
-	if err := tree.Walk("/rat", walkFn); err != nil {
+	if err := tree.Walk("rat", walkFn); err != nil {
 		t.Errorf("expected error nil, got %v", err)
 	}
 	if visited[keys[0]] != 0 {
@@ -308,21 +317,20 @@ func testWalk(t *testing.T, tree rtree) {
 		visited[k] = 0
 	}
 
-	err = tree.Walk("/rat/whiskers", walkFn)
+	err = tree.Walk("rat/whis/kers", walkFn)
 	if err != nil {
 		t.Errorf("expected error nil, got %v", err)
 	}
-	for i, key := range keys {
-		if i == 6 {
+	for _, key := range keys {
+		if key == "rat/whis/kers" {
+			if visited[key] != 1 {
+				t.Error(key, " should have been visited")
+			}
 			continue
 		}
 		if visited[key] != 0 {
 			t.Error(key, " should not have been visited")
 		}
-	}
-	// Do not test /rats since that is visited by Runes but not Paths
-	if visited[keys[6]] != 1 {
-		t.Error(keys[6], " should have been visited")
 	}
 
 	// Reset visited counts
@@ -330,14 +338,14 @@ func testWalk(t *testing.T, tree rtree) {
 		visited[k] = 0
 	}
 
-	testKey := "/rat/winks/wryly/once"
+	testKey := "rat/winks/wryly/once"
 	keys = append(keys, testKey)
-	tree.Put(testKey, strings.ToUpper(testKey))
+	tree.Put(testKey, keyToValue(testKey))
 
 	walkPFn := func(key string, value interface{}) error {
 		// value for each walked key is correct
-		if value != strings.ToUpper(key) {
-			t.Errorf("expected key %s to have value %v, got %v", key, strings.ToUpper(key), value)
+		if value != keyToValue(key) {
+			t.Errorf("expected key %s to have value %v, got %v", key, keyToValue(key), value)
 		}
 		visited[key]++
 		return nil
@@ -347,7 +355,7 @@ func testWalk(t *testing.T, tree rtree) {
 	if err != nil {
 		t.Errorf("expected error nil, got %v", err)
 	}
-	err = checkVisited(visited, "/rat", "/rat/winks/wryly", testKey)
+	err = checkVisited(visited, "rat", "rat/winks/wryly", testKey)
 	if err != nil {
 		t.Error(err)
 	}
@@ -358,7 +366,7 @@ func testWalk(t *testing.T, tree rtree) {
 	}
 	err = tree.WalkPath(testKey, func(key string, value interface{}) error {
 		visited[key]++
-		if key == "/rat/winks/wryly" {
+		if key == "rat/winks/wryly" {
 			return Skip
 		}
 		return nil
@@ -366,7 +374,7 @@ func testWalk(t *testing.T, tree rtree) {
 	if err != nil {
 		t.Errorf("expected error nil, got %v", err)
 	}
-	err = checkVisited(visited, "/rat", "/rat/winks/wryly")
+	err = checkVisited(visited, "rat", "rat/winks/wryly")
 	if err != nil {
 		t.Error(err)
 	}
@@ -377,7 +385,7 @@ func testWalk(t *testing.T, tree rtree) {
 	}
 	err = tree.WalkPath(testKey, func(key string, value interface{}) error {
 		visited[key]++
-		if key == "/rat/winks/wryly" {
+		if key == "rat/winks/wryly" {
 			return fmt.Errorf("error at key %s", key)
 		}
 		return nil
@@ -385,7 +393,7 @@ func testWalk(t *testing.T, tree rtree) {
 	if err == nil {
 		t.Errorf("expected error")
 	}
-	err = checkVisited(visited, "/rat", "/rat/winks/wryly")
+	err = checkVisited(visited, "rat", "rat/winks/wryly")
 	if err != nil {
 		t.Error(err)
 	}
@@ -475,7 +483,7 @@ func testWalkError(t *testing.T, tree rtree) {
 
 	walkErr := errors.New("walk error")
 	var walked int
-	walkFn := func(k KeyStringer, value interface{}) error {
+	walkFn := func(k fmt.Stringer, value interface{}) error {
 		if value == 999 {
 			return walkErr
 		}
@@ -504,7 +512,7 @@ func testWalkSkip(t *testing.T, tree rtree) {
 		t.Log(dump(tree))
 	}
 	var walked int
-	walkFn := func(k KeyStringer, value interface{}) error {
+	walkFn := func(k fmt.Stringer, value interface{}) error {
 		switch value {
 		case 555:
 			return Skip

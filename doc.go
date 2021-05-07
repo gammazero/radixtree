@@ -13,10 +13,14 @@ edge label is omitted, since that is already known when descending the tree.
 
 The implementations are optimized for Get performance and allocate 0 bytes of
 heap memory per Get; therefore no garbage to collect.  Once the radix tree is
-build, it can be repeatedly searched very quickly.
+built, it can be repeatedly searched very quickly.
 
-Access is not synchronized (not concurrent safe), allowing the caller to
-synchronize, if needed, in whatever manner works best for the application.
+The implementations are optimized for Get performance and allocates 0 bytes of
+heap memory per Get; therefore no garbage to collect.  Once the radix tree is
+built, it can be repeatedly searched quickly. Concurrent searches are safe
+since these do not modify the radixtree. Access is not synchronized (not
+concurrent safe with writes), allowing the caller to synchronize, if needed, in
+whatever manner works best for the application.
 
 */
 package radixtree

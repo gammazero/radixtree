@@ -12,19 +12,58 @@ func TestPathNext(t *testing.T) {
 		indexes []int
 	}{
 		{"", []string{""}, []int{-1}},
-		{"/", []string{"/"}, []int{-1}},
-		{"//", []string{"/", "/"}, []int{1, -1}},
-		{"/a/b/c", []string{"/a", "/b", "/c"}, []int{2, 4, -1}},
+		{"/", []string{""}, []int{-1}},
+		{"//", []string{""}, []int{-1}},
+		{"/a/b/c", []string{"a", "b", "c"}, []int{3, 5, -1}},
 		{"some_file", []string{"some_file"}, []int{-1}},
-		{"/home/aripley", []string{"/home", "/aripley"}, []int{5, -1}},
-		{"home/ntaylor", []string{"home", "/ntaylor"}, []int{4, -1}},
-		{"/home/jwaits/", []string{"/home", "/jwaits", "/"}, []int{5, 12, -1}},
-		{"home/dverlaine/", []string{"home", "/dverlaine", "/"}, []int{4, 14, -1}},
+		{"/home/aripley", []string{"home", "aripley"}, []int{6, -1}},
+		{"home/ntaylor", []string{"home", "ntaylor"}, []int{5, -1}},
+		{"/home//jwaits/", []string{"home", "jwaits"}, []int{7, -1}},
+		{"home/dverlaine/", []string{"home", "dverlaine"}, []int{5, -1}},
 	}
 
+	const pathSep = "/"
 	for _, c := range cases {
 		var partNum int
-		for part, next := pathNext(c.key, 0); ; part, next = pathNext(c.key, next) {
+		for part, next := pathNext(c.key, pathSep, 0); ; part, next = pathNext(c.key, pathSep, next) {
+			if part != c.parts[partNum] {
+				t.Errorf("expected part %d of key %q to be %q, got '%s'", partNum, c.key, c.parts[partNum], part)
+			}
+			if next != c.indexes[partNum] {
+				t.Errorf("at split %d, expected next index of key %q to be %d, got %d", partNum, c.key, c.indexes[partNum], next)
+			}
+			partNum++
+			if next == -1 {
+				break
+			}
+		}
+		if partNum != len(c.parts) {
+			t.Errorf("expected %q to have %d parts, got %d", c.key, len(c.parts), partNum)
+		}
+	}
+}
+
+func TestPathNextMultichar(t *testing.T) {
+	cases := []struct {
+		key     string
+		parts   []string
+		indexes []int
+	}{
+		{"", []string{""}, []int{-1}},
+		{"--", []string{""}, []int{-1}},
+		{"----", []string{""}, []int{-1}},
+		{"--a--b--c", []string{"a", "b", "c"}, []int{5, 8, -1}},
+		{"some_file", []string{"some_file"}, []int{-1}},
+		{"--home--aripley", []string{"home", "aripley"}, []int{8, -1}},
+		{"home--ntaylor", []string{"home", "ntaylor"}, []int{6, -1}},
+		{"--home----jwaits--", []string{"home", "jwaits"}, []int{10, -1}},
+		{"home--dverlaine--", []string{"home", "dverlaine"}, []int{6, -1}},
+	}
+
+	const pathSep = "--"
+	for _, c := range cases {
+		var partNum int
+		for part, next := pathNext(c.key, pathSep, 0); ; part, next = pathNext(c.key, pathSep, next) {
 			if part != c.parts[partNum] {
 				t.Errorf("expected part %d of key %q to be %q, got '%s'", partNum, c.key, c.parts[partNum], part)
 			}
@@ -52,26 +91,26 @@ func TestPathNextBeginEnd(t *testing.T) {
 		{"", 0, "", -1},
 		{"", 100, "", -1},
 
-		{" /", 0, " ", 1},
-		{" /", 1, "/", -1},
+		{" /", 0, " ", -1},
+		{" /", 1, "", -1},
 
-		{"/", 0, "/", -1},
+		{"/", 0, "", -1},
 		{"/", 1, "", -1},
 		{"/", 100, "", -1},
 		{"/", -100, "", -1},
 
-		{"//", 0, "/", 1},
-		{"//", 1, "/", -1},
+		{"//", 0, "", -1},
+		{"//", 1, "", -1},
 		{"//", 2, "", -1},
 
-		{"///", 0, "/", 1},
-		{"///", 1, "/", 2},
-		{"///", 2, "/", -1},
+		{"///", 0, "", -1},
+		{"///", 1, "", -1},
+		{"///", 2, "", -1},
 		{"///", 3, "", -1},
 	}
 
 	for _, c := range cases {
-		part, next := pathNext(c.path, c.start)
+		part, next := pathNext(c.path, "/", c.start)
 		if part != c.part {
 			t.Errorf("expected part %q starting at %d in path %q, got %q", c.part, c.start, c.path, part)
 		}
