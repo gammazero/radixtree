@@ -334,6 +334,9 @@ func TestPathsCopyIterator(t *testing.T) {
 	//                         /L3B-> ("/L4", 3)
 
 	iter := tree.NewIterator()
+	if iter.Next("") {
+		t.Fatal("\"\" should not have advanced iterator")
+	}
 	if iter.Next("x") {
 		t.Fatal("x should not have advanced iterator")
 	}
