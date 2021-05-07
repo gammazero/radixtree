@@ -29,7 +29,8 @@ func (tree *Runes) NewIterator() *RunesIterator {
 }
 
 // Copy makes a copy of the current iterator.  This allows branching an
-// iterator into two iterators that can take separate paths.
+// iterator into two iterators that can take separate paths.  These iterators
+// do not affect eachother and can be iterated concurrently.
 func (it *RunesIterator) Copy() *RunesIterator {
 	return &RunesIterator{
 		p:    it.p,

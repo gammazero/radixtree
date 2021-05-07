@@ -58,7 +58,8 @@ func (tree *Paths) NewIterator() *PathsIterator {
 }
 
 // Copy makes a copy of the current iterator.  This allows branching an
-// iterator into two iterators that can take separate paths.
+// iterator into two iterators that can take separate paths.  These iterators
+// do not affect eachother and can be iterated concurrently.
 func (it *PathsIterator) Copy() *PathsIterator {
 	return &PathsIterator{
 		p:       it.p,

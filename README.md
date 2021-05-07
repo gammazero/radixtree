@@ -10,7 +10,7 @@ Package `radixtree` implements multiple forms of an Adaptive [Radix Tree](https:
 
 This radix tree is adaptive in the sense that nodes are not constant size, having as few or many children as needed, up to the number of different key segments to traverse to the next branch or value.
 
-An iterator for each type of radix tree allows a tree to be traversed one key segment at a time.  This is useful for incremental lookups of partial keys.
+An iterator for each type of radix tree allows a tree to be traversed one key segment at a time.  This is useful for incremental lookups of partial keys.  Iterators can be copied in order to branched a search, and copies iterated concurrently.
 
 The implementations are optimized for Get performance and allocates 0 bytes of heap memory per Get; therefore no garbage to collect.  Once the radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the radixtree. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
 
