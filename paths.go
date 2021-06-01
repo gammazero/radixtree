@@ -298,10 +298,10 @@ func (tree *Paths) compress() {
 	}
 }
 
-// Walk visits all nodes whose keys match or are are prefixed by the specified
-// key, calling walkFn for each value found. If walkFn returns an error, the
-// walk is aborted. If walkFn returns Skip, Walk will not descend into the
-// node's children. Use empty key "" to visit all nodes.
+// Walk visits all nodes whose keys match or are prefixed by the specified key,
+// calling walkFn for each value found. If walkFn returns an error, the walk is
+// aborted. If walkFn returns Skip, Walk will not descend into the node's
+// children. Use empty key "" to visit all nodes.
 //
 // The tree is traversed depth-first, in no guaranteed order.
 //
