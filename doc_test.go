@@ -7,7 +7,7 @@ import (
 	"github.com/gammazero/radixtree"
 )
 
-//nolint errcheck // Walk only returns error is user function returns error
+//nolint errcheck // Walk only returns error if user function returns error
 func ExampleRunes_Walk() {
 	rt := new(radixtree.Runes)
 	rt.Put("tomato", "TOMATO")
@@ -22,7 +22,7 @@ func ExampleRunes_Walk() {
 	})
 }
 
-//nolint errcheck // WalkPath only returns error is user function returns error
+//nolint errcheck // WalkPath only returns error if user function returns error
 func ExampleRunes_WalkPath() {
 	rt := new(radixtree.Runes)
 	rt.Put("tomato", "TOMATO")
@@ -62,7 +62,7 @@ func ExampleRunes_NewIterator() {
 	// TOMATO
 }
 
-//nolint errcheck // Walk only returns error is user function returns error
+//nolint errcheck // Walk only returns error if user function returns error
 func ExamplePaths_Walk() {
 	pt := new(radixtree.Paths)
 	pt.Put("home/abc", "my home directory")
@@ -78,7 +78,7 @@ func ExamplePaths_Walk() {
 	})
 }
 
-//nolint errcheck // WalkPath only returns error is user function returns error
+//nolint errcheck // WalkPath only returns error if user function returns error
 func ExamplePaths_WalkPath() {
 	pt := new(radixtree.Paths)
 	pt.Put("home/abc", "my home directory")
