@@ -2,7 +2,6 @@ package radixtree
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"testing"
 )
@@ -15,36 +14,78 @@ const (
 //
 // Benchmarks
 //
-func BenchmarkWordsRunesPut(b *testing.B) {
-	benchmarkPut(wordsPath, b)
+func BenchmarkWordsMap(b *testing.B) {
+	benchmarkMapToCompareWithGet(wordsPath, b)
+}
+
+func BenchmarkWordsBytesGet(b *testing.B) {
+	benchmarkBytesGet(wordsPath, b)
+}
+
+func BenchmarkWordsBytesPut(b *testing.B) {
+	benchmarkBytesPut(wordsPath, b)
+}
+
+func BenchmarkWordsBytesWalk(b *testing.B) {
+	benchmarkBytesWalk(wordsPath, b)
+}
+
+func BenchmarkWordsBytesWalkPath(b *testing.B) {
+	benchmarkBytesWalkPath(wordsPath, b)
 }
 
 func BenchmarkWordsRunesGet(b *testing.B) {
-	benchmarkGet(wordsPath, b)
+	benchmarkRunesGet(wordsPath, b)
+}
+
+func BenchmarkWordsRunesPut(b *testing.B) {
+	benchmarkRunesPut(wordsPath, b)
 }
 
 func BenchmarkWordsRunesWalk(b *testing.B) {
-	benchmarkWalk(wordsPath, b)
+	benchmarkRunesWalk(wordsPath, b)
 }
 
 func BenchmarkWordsRunesWalkPath(b *testing.B) {
-	benchmarkWalkPath(wordsPath, b)
+	benchmarkRunesWalkPath(wordsPath, b)
 }
 
-func BenchmarkWeb2aRunesPut(b *testing.B) {
-	benchmarkPut(web2aPath, b)
+// ----- Web2a -----
+
+func BenchmarkWeb2aMap(b *testing.B) {
+	benchmarkMapToCompareWithGet(web2aPath, b)
+}
+
+func BenchmarkWeb2aBytesGet(b *testing.B) {
+	benchmarkBytesGet(web2aPath, b)
+}
+
+func BenchmarkWeb2aBytesPut(b *testing.B) {
+	benchmarkBytesPut(web2aPath, b)
+}
+
+func BenchmarkWeb2aBytesWalk(b *testing.B) {
+	benchmarkBytesWalk(web2aPath, b)
+}
+
+func BenchmarkWeb2aBytesWalkPath(b *testing.B) {
+	benchmarkBytesWalkPath(web2aPath, b)
 }
 
 func BenchmarkWeb2aRunesGet(b *testing.B) {
-	benchmarkGet(web2aPath, b)
+	benchmarkRunesGet(web2aPath, b)
+}
+
+func BenchmarkWeb2aRunesPut(b *testing.B) {
+	benchmarkRunesPut(web2aPath, b)
 }
 
 func BenchmarkWeb2aRunesWalk(b *testing.B) {
-	benchmarkWalk(web2aPath, b)
+	benchmarkRunesWalk(web2aPath, b)
 }
 
 func BenchmarkWeb2aRunesWalkPath(b *testing.B) {
-	benchmarkWalkPath(web2aPath, b)
+	benchmarkRunesWalkPath(web2aPath, b)
 }
 
 func BenchmarkWeb2aPathsPut(b *testing.B) {
@@ -63,7 +104,113 @@ func BenchmarkWeb2aPathsWalkPath(b *testing.B) {
 	benchmarkPathsWalkPath(web2aPath, b)
 }
 
-func benchmarkPut(filePath string, b *testing.B) {
+func benchmarkMapToCompareWithGet(filePath string, b *testing.B) {
+	words, err := loadWords(filePath)
+	if err != nil {
+		b.Skip(err.Error())
+	}
+	m := make(map[string]string, len(words))
+	for _, w := range words {
+		m[w] = w
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for n := 0; n < b.N; n++ {
+		for _, w := range words {
+			_, ok := m[w]
+			if !ok {
+				panic("missing value")
+			}
+		}
+	}
+}
+
+func benchmarkBytesPut(filePath string, b *testing.B) {
+	words, err := loadWords(filePath)
+	if err != nil {
+		b.Skip(err.Error())
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for n := 0; n < b.N; n++ {
+		tree := new(Bytes)
+		for _, w := range words {
+			tree.Put(w, w)
+		}
+	}
+}
+
+func benchmarkBytesGet(filePath string, b *testing.B) {
+	words, err := loadWords(filePath)
+	if err != nil {
+		b.Skip(err.Error())
+	}
+	tree := new(Bytes)
+	for _, w := range words {
+		tree.Put(w, w)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for n := 0; n < b.N; n++ {
+		for _, w := range words {
+			if _, ok := tree.Get(w); !ok {
+				panic("missing value")
+			}
+		}
+	}
+}
+
+func benchmarkBytesWalk(filePath string, b *testing.B) {
+	words, err := loadWords(filePath)
+	if err != nil {
+		b.Skip(err.Error())
+	}
+	tree := new(Bytes)
+	for _, w := range words {
+		tree.Put(w, w)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	var count int
+	for n := 0; n < b.N; n++ {
+		count = 0
+		tree.Walk("", func(k string, value interface{}) bool {
+			count++
+			return false
+		})
+	}
+	if count != len(words) {
+		panic("wrong count")
+	}
+}
+
+func benchmarkBytesWalkPath(filePath string, b *testing.B) {
+	words, err := loadWords(filePath)
+	if err != nil {
+		b.Skip(err.Error())
+	}
+	tree := new(Bytes)
+	for _, w := range words {
+		tree.Put(w, w)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	var count int
+	for n := 0; n < b.N; n++ {
+		count = 0
+		for _, w := range words {
+			tree.WalkPath(w, func(key string, value interface{}) bool {
+				count++
+				return false
+			})
+		}
+	}
+	if count <= len(words) {
+		panic("wrong count")
+	}
+}
+
+func benchmarkRunesPut(filePath string, b *testing.B) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
@@ -78,7 +225,7 @@ func benchmarkPut(filePath string, b *testing.B) {
 	}
 }
 
-func benchmarkGet(filePath string, b *testing.B) {
+func benchmarkRunesGet(filePath string, b *testing.B) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
@@ -86,17 +233,23 @@ func benchmarkGet(filePath string, b *testing.B) {
 	tree := new(Runes)
 	for _, w := range words {
 		tree.Put(w, w)
+		v, ok := tree.Get(w)
+		if !ok || v == nil {
+			panic("did not insert value: " + w)
+		}
 	}
 	b.ResetTimer()
 	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
 		for _, w := range words {
-			tree.Get(w)
+			if _, ok := tree.Get(w); !ok {
+				panic("missing value for " + w)
+			}
 		}
 	}
 }
 
-func benchmarkWalk(filePath string, b *testing.B) {
+func benchmarkRunesWalk(filePath string, b *testing.B) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
@@ -110,9 +263,9 @@ func benchmarkWalk(filePath string, b *testing.B) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		_ = tree.Walk("", func(k fmt.Stringer, value interface{}) error {
+		tree.Walk("", func(k string, value interface{}) bool {
 			count++
-			return nil
+			return false
 		})
 	}
 	if count != len(words) {
@@ -120,7 +273,7 @@ func benchmarkWalk(filePath string, b *testing.B) {
 	}
 }
 
-func benchmarkWalkPath(filePath string, b *testing.B) {
+func benchmarkRunesWalkPath(filePath string, b *testing.B) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
@@ -135,9 +288,9 @@ func benchmarkWalkPath(filePath string, b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		count = 0
 		for _, w := range words {
-			_ = tree.WalkPath(w, func(key string, value interface{}) error {
+			tree.WalkPath(w, func(key string, value interface{}) bool {
 				count++
-				return nil
+				return false
 			})
 		}
 	}
@@ -193,9 +346,9 @@ func benchmarkPathsWalk(filePath string, b *testing.B) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		_ = tree.Walk("", func(k fmt.Stringer, value interface{}) error {
+		tree.Walk("", func(k string, value interface{}) bool {
 			count++
-			return nil
+			return false
 		})
 	}
 	if count != len(words) {
@@ -218,9 +371,9 @@ func benchmarkPathsWalkPath(filePath string, b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		count = 0
 		for _, w := range words {
-			_ = tree.WalkPath(w, func(key string, value interface{}) error {
+			tree.WalkPath(w, func(key string, value interface{}) bool {
 				count++
-				return nil
+				return false
 			})
 		}
 	}

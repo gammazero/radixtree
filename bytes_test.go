@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-func TestRunesAddEnd(t *testing.T) {
-	rt := new(Runes)
+func TestBytesAddEnd(t *testing.T) {
+	rt := new(Bytes)
 	rt.Put("tomato", "TOMATO")
 	if len(rt.edges) != 1 {
 		t.Fatal("root should have 1 child")
@@ -70,8 +70,8 @@ func TestRunesAddEnd(t *testing.T) {
 	t.Log(dump(rt))
 }
 
-func TestRunesAddFront(t *testing.T) {
-	rt := new(Runes)
+func TestBytesAddFront(t *testing.T) {
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	t.Log(dump(rt))
 	// (root) t-> ("om", TOM)
@@ -117,8 +117,8 @@ func TestRunesAddFront(t *testing.T) {
 	}
 }
 
-func TestRunesAddBranch(t *testing.T) {
-	rt := new(Runes)
+func TestBytesAddBranch(t *testing.T) {
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 
@@ -154,7 +154,7 @@ func TestRunesAddBranch(t *testing.T) {
 		t.Fatal("node should not have prefix")
 	}
 	if node2.leaf == nil {
-		t.Fatal("missing value at child")
+		t.Fatal("missing value at node")
 	}
 	if node2.leaf.value != "TOM" {
 		t.Fatal("wrong value at node:", node2.leaf.value)
@@ -196,8 +196,8 @@ func TestRunesAddBranch(t *testing.T) {
 	}
 }
 
-func TestRunesAddBranchToBranch(t *testing.T) {
-	rt := new(Runes)
+func TestBytesAddBranchToBranch(t *testing.T) {
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -252,8 +252,8 @@ func TestRunesAddBranchToBranch(t *testing.T) {
 	}
 }
 
-func TestRunesAddExisting(t *testing.T) {
-	rt := new(Runes)
+func TestBytesAddExisting(t *testing.T) {
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -314,8 +314,8 @@ func TestRunesAddExisting(t *testing.T) {
 	}
 }
 
-func TestRunesDelete(t *testing.T) {
-	rt := new(Runes)
+func TestBytesDelete(t *testing.T) {
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -345,7 +345,7 @@ func TestRunesDelete(t *testing.T) {
 	}
 	if string(node.prefix) != "ato" {
 		t.Log(dump(rt))
-		t.Error("worng prefix for compressed node: ", node.prefix)
+		t.Error("worng prefix for compresses node: ", node.prefix)
 	}
 
 	// Test deleting key that does not exist
@@ -354,8 +354,8 @@ func TestRunesDelete(t *testing.T) {
 	}
 }
 
-func TestRunesBuildEdgeCases(t *testing.T) {
-	tree := new(Runes)
+func TestBytesBuildEdgeCases(t *testing.T) {
+	tree := new(Bytes)
 
 	tree.Put("ABCD", 1)
 	t.Log(dump(tree))
@@ -400,9 +400,6 @@ func TestRunesBuildEdgeCases(t *testing.T) {
 	if string(node.prefix) != "L1/L2" {
 		t.Fatal("expected prefix 'L2/L3', got ", node.prefix)
 	}
-	if node.leaf == nil {
-		t.Fatal("missing value at child")
-	}
 	if node.leaf.value != 1 {
 		t.Fatal("expected value of 1, got ", node.leaf.value)
 	}
@@ -425,9 +422,6 @@ func TestRunesBuildEdgeCases(t *testing.T) {
 	}
 	if string(node.prefix) != "L3" {
 		t.Fatal("expected prefix '/L3', got ", node.prefix)
-	}
-	if node.leaf == nil {
-		t.Fatal("missing value at child")
 	}
 	if node.leaf.value != 555 {
 		t.Fatal("expected value of 555, got ", node.leaf.value)
@@ -452,9 +446,6 @@ func TestRunesBuildEdgeCases(t *testing.T) {
 	if string(node.prefix) != "L3" {
 		t.Fatal("expected prefix '/L3', got ", node.prefix)
 	}
-	if node.leaf == nil {
-		t.Fatal("missing value at child")
-	}
 	if node.leaf.value != 555 {
 		t.Fatal("expected value of 555, got ", node.leaf.value)
 	}
@@ -464,9 +455,6 @@ func TestRunesBuildEdgeCases(t *testing.T) {
 	}
 	if string(node.prefix) != "L4" {
 		t.Fatal("expected prefix '/L4', got ", node.prefix)
-	}
-	if node.leaf == nil {
-		t.Fatal("missing value at child")
 	}
 	if node.leaf.value != 999 {
 		t.Fatal("expected value of 999, got ", node.leaf.value)
@@ -505,8 +493,8 @@ func TestRunesBuildEdgeCases(t *testing.T) {
 	t.Log(dump(tree))
 }
 
-func TestRunesCopyIterator(t *testing.T) {
-	rt := new(Runes)
+func TestBytesCopyIterator(t *testing.T) {
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -583,8 +571,8 @@ func TestRunesCopyIterator(t *testing.T) {
 	}
 }
 
-func TestSimpleRunesWalk(t *testing.T) {
-	rt := new(Runes)
+func TestSimpleBytesWalk(t *testing.T) {
+	rt := new(Bytes)
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tornado", "TORNADO")
@@ -644,9 +632,10 @@ func TestSimpleRunesWalk(t *testing.T) {
 	}
 }
 
-func TestRunesEdgeSort(t *testing.T) {
-	var edges runeEdges
-	edges = []runeEdge{runeEdge{'z', nil}, runeEdge{'a', nil}}
+func TestBytesEdgeSort(t *testing.T) {
+	b := []byte("az")
+	var edges byteEdges
+	edges = []byteEdge{byteEdge{b[1], nil}, byteEdge{b[0], nil}}
 
 	if edges.Len() != 2 {
 		t.Fatal("bad Len")
@@ -666,32 +655,43 @@ func TestRunesEdgeSort(t *testing.T) {
 	}
 }
 
-func TestRunes(t *testing.T) {
-	testRadixTree(t, new(Runes))
+func TestBytesAppleCart(t *testing.T) {
+	r := new(Bytes)
+	r.Put("apple", "APPLE")
+	r.Put("applecart", "APPLECART")
+	val, ok := r.Get("app")
+	if ok || val != nil {
+		t.Fatal("should not have returned value")
+	}
+	t.Log(dump(r))
 }
 
-func TestRunesNilGet(t *testing.T) {
-	testNilGet(t, new(Runes))
+func TestBytes(t *testing.T) {
+	testRadixTree(t, new(Bytes))
 }
 
-func TestRunesRoot(t *testing.T) {
-	testRoot(t, new(Runes))
+func TestBytesNilGet(t *testing.T) {
+	testNilGet(t, new(Bytes))
 }
 
-func TestRunesWalk(t *testing.T) {
-	testWalk(t, new(Runes))
+func TestBytesRoot(t *testing.T) {
+	testRoot(t, new(Bytes))
 }
 
-func TestRunesWalkStop(t *testing.T) {
-	testWalkStop(t, new(Runes))
+func TestBytesWalk(t *testing.T) {
+	testWalk(t, new(Bytes))
 }
 
-func TestRunesInspectStop(t *testing.T) {
-	testInspectStop(t, new(Runes))
+func TestBytesWalkStop(t *testing.T) {
+	testWalkStop(t, new(Bytes))
 }
 
-func TestRunesStringConvert(t *testing.T) {
-	tree := new(Runes)
+func TestBytesInspectStop(t *testing.T) {
+	testInspectStop(t, new(Bytes))
+}
+
+func TestBytesStringConvert(t *testing.T) {
+	tree := new(Bytes)
 	for _, w := range []string{"Bart", `Bartók`, `AbónXw`, `AbónYz`} {
 		ok := tree.Put(w, w)
 		if !ok {
@@ -701,7 +701,7 @@ func TestRunesStringConvert(t *testing.T) {
 		v, _ := tree.Get(w)
 		if v == nil {
 			t.Log(dump(tree))
-			t.Fatal("no value returned getting", w)
+			t.Fatal("nil value returned getting", w)
 		}
 		s, ok := v.(string)
 		if !ok {
@@ -711,12 +711,25 @@ func TestRunesStringConvert(t *testing.T) {
 			t.Fatalf("returned wrong value - expected %q got %q", w, s)
 		}
 	}
+	t.Log(dump(tree))
+	tree.Walk("", func(key string, val interface{}) bool {
+		t.Log("Key:", key)
+		s, ok := val.(string)
+		if !ok {
+			t.Fatal("value is not a string")
+		}
+		t.Log("Val:", s)
+		if key != s {
+			t.Error("Key and value do not match")
+		}
+		return false
+	})
 
 	words, err := loadWords(wordsPath)
 	if err != nil {
 		panic(err)
 	}
-	tree = new(Runes)
+	tree = new(Bytes)
 	var p, pp, ppp string
 	for _, w := range words {
 		tree.Put(w, w)
@@ -725,6 +738,14 @@ func TestRunesStringConvert(t *testing.T) {
 			t.Log("previous values:", p, pp, ppp)
 			t.Fatal("did not insert value:", w)
 		}
+		s, ok := v.(string)
+		if !ok {
+			t.Fatal("value is not a string")
+		}
+		if s != w {
+			t.Fatalf("returned wrong value - expected %q got %q", w, s)
+		}
+
 		ppp = pp
 		pp = p
 		p = w

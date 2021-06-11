@@ -2,44 +2,50 @@ package radixtree
 
 import (
 	"sort"
+	"strings"
 )
 
-// Runes is a radix tree of runes with string keys and interface{} values.
+// Bytes is a radix tree of bytes with string keys and interface{} values.
 // Non-terminal nodes have nil values, so a stored nil value is not
 // distinguishable and is not included in Walk or WalkPath.
-type Runes struct {
+type Bytes struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
-	prefix []rune
-	edges  runeEdges
+	prefix string
+	edges  byteEdges
 	leaf   *leaf
 }
 
-type runeEdge struct {
-	radix rune
-	node  *Runes
+type leaf struct {
+	key   string
+	value interface{}
 }
 
-// runeEdges implements sort.Interface
-type runeEdges []runeEdge
+type byteEdge struct {
+	radix byte
+	node  *Bytes
+}
 
-func (e runeEdges) Len() int           { return len(e) }
-func (e runeEdges) Less(i, j int) bool { return e[i].radix < e[j].radix }
-func (e runeEdges) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
+// byteEdges implements sort.Interface
+type byteEdges []byteEdge
 
-// RunesIterator is a stateful iterator that traverses a Runes radix tree one
+func (e byteEdges) Len() int           { return len(e) }
+func (e byteEdges) Less(i, j int) bool { return e[i].radix < e[j].radix }
+func (e byteEdges) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
+
+// BytesIterator is a stateful iterator that traverses a Bytes radix tree one
 // character at a time.
 //
 // Note: Any modification to the tree invalidates the iterator.
-type RunesIterator struct {
+type BytesIterator struct {
 	p    int
-	node *Runes
+	node *Bytes
 }
 
-// NewIterator returns a new RunesIterator instance that begins iterating from
+// NewIterator returns a new BytesIterator instance that begins iterating from
 // the root of the tree.
-func (tree *Runes) NewIterator() *RunesIterator {
-	return &RunesIterator{
+func (tree *Bytes) NewIterator() *BytesIterator {
+	return &BytesIterator{
 		node: tree,
 	}
 }
@@ -47,8 +53,8 @@ func (tree *Runes) NewIterator() *RunesIterator {
 // Copy makes a copy of the current iterator.  This allows branching an
 // iterator into two iterators that can take separate paths.  These iterators
 // do not affect eachother and can be iterated concurrently.
-func (it *RunesIterator) Copy() *RunesIterator {
-	return &RunesIterator{
+func (it *BytesIterator) Copy() *BytesIterator {
+	return &BytesIterator{
 		p:    it.p,
 		node: it.node,
 	}
@@ -62,7 +68,7 @@ func (it *RunesIterator) Copy() *RunesIterator {
 // When false is returned the iterator is not modified. This allows different
 // values to be used, in subsequent calls to Next, to advance the iterator from
 // its current position.
-func (it *RunesIterator) Next(radix rune) bool {
+func (it *BytesIterator) Next(radix byte) bool {
 	// The tree.prefix represents single-edge parents without values that were
 	// compressed out of the tree.  Let prefix consume key symbols.
 	if it.p < len(it.node.prefix) {
@@ -87,7 +93,7 @@ func (it *RunesIterator) Next(radix rune) bool {
 
 // Value returns the value at the current iterator position, and true or false
 // to indicate if there is a value at the position.
-func (it *RunesIterator) Value() (interface{}, bool) {
+func (it *BytesIterator) Value() (interface{}, bool) {
 	// Only return value if all of this node's prefix was matched.  Otherwise,
 	// have not fully traversed into this node (edge not completely traversed).
 	if it.p != len(it.node.prefix) {
@@ -101,8 +107,7 @@ func (it *RunesIterator) Value() (interface{}, bool) {
 
 // Get returns the value stored at the given key.  Returns false if the key does
 // not identify a node that has a value.
-func (tree *Runes) Get(k string) (interface{}, bool) {
-	key := []rune(k)
+func (tree *Bytes) Get(key string) (interface{}, bool) {
 	for {
 		// All key data consumed and matched against node prefix, so this is
 		// the requested or an intermediate node.
@@ -120,7 +125,7 @@ func (tree *Runes) Get(k string) (interface{}, bool) {
 		}
 
 		// Consume key data
-		if !runesHasPrefix(key[1:], tree.prefix) {
+		if !strings.HasPrefix(key[1:], tree.prefix) {
 			break
 		}
 		key = key[len(tree.prefix)+1:]
@@ -128,34 +133,20 @@ func (tree *Runes) Get(k string) (interface{}, bool) {
 	return nil, false
 }
 
-func runesHasPrefix(s, prefix []rune) bool {
-	if len(s) < len(prefix) {
-		return false
-	}
-	for i := range prefix {
-		if s[i] != prefix[i] {
-			return false
-		}
-	}
-	return true
-}
-
 // Put inserts the value into the tree at the given key, replacing any existing
 // items.  It returns true if it adds a new value, false if it replaces an
 // existing value.
-func (tree *Runes) Put(k string, value interface{}) bool {
+func (tree *Bytes) Put(key string, value interface{}) bool {
 	var (
 		p          int
 		isNewValue bool
-		newEdge    runeEdge
+		newEdge    byteEdge
 		hasNewEdge bool
 	)
 	node := tree
 
-	// Need to iterate key as slice of runes, otherwise indexes will be skipped
-	// when a multibyte character is seen.
-	key := []rune(k)
-	for i, radix := range key {
+	for i := 0; i < len(key); i++ {
+		radix := key[i]
 		if p < len(node.prefix) {
 			if radix == node.prefix[p] {
 				p++
@@ -169,16 +160,16 @@ func (tree *Runes) Put(k string, value interface{}) bool {
 		// Descended as far as prefixes and edges match key, and still
 		// have key data, so add child that has a prefix of the unmatched
 		// key data and set its value to the new value.
-		newChild := &Runes{
+		newChild := &Bytes{
 			leaf: &leaf{
-				key:   k,
+				key:   key,
 				value: value,
 			},
 		}
 		if i < len(key)-1 {
-			newChild.prefix = key[i+1:]
+			newChild.prefix = string(key[i+1:])
 		}
-		newEdge = runeEdge{radix, newChild}
+		newEdge = byteEdge{radix, newChild}
 		hasNewEdge = true
 		break
 	}
@@ -200,7 +191,7 @@ func (tree *Runes) Put(k string, value interface{}) bool {
 			isNewValue = true
 		}
 		node.leaf = &leaf{
-			key:   k,
+			key:   key,
 			value: value,
 		}
 	}
@@ -212,8 +203,8 @@ func (tree *Runes) Put(k string, value interface{}) bool {
 //     ("prefix", leaf, edges[])
 // is split into parent branching node, and a child leaf node:
 //     ("pre", nil, edges[f])--->("ix", leaf, edges[])
-func (tree *Runes) split(p int) {
-	split := &Runes{
+func (tree *Bytes) split(p int) {
+	split := &Bytes{
 		edges: tree.edges,
 		leaf:  tree.leaf,
 	}
@@ -221,9 +212,9 @@ func (tree *Runes) split(p int) {
 		split.prefix = tree.prefix[p+1:]
 	}
 	tree.edges = nil
-	tree.addEdge(runeEdge{tree.prefix[p], split})
+	tree.addEdge(byteEdge{tree.prefix[p], split})
 	if p == 0 {
-		tree.prefix = nil
+		tree.prefix = ""
 	} else {
 		tree.prefix = tree.prefix[:p]
 	}
@@ -235,14 +226,15 @@ func (tree *Runes) split(p int) {
 // has no edges (is a leaf node) it is removed from the tree.  If any of of the
 // node's ancestors becomes childless as a result, they are also removed from
 // the tree.
-func (tree *Runes) Delete(key string) bool {
+func (tree *Bytes) Delete(key string) bool {
 	node := tree
 	var (
-		nodes []*Runes
-		links []rune
+		nodes []*Bytes
+		links []byte
 		p     int
 	)
-	for _, radix := range key {
+	for i := 0; i < len(key); i++ {
+		radix := key[i]
 		if p < len(node.prefix) {
 			if radix == node.prefix[p] {
 				p++
@@ -281,7 +273,7 @@ func (tree *Runes) Delete(key string) bool {
 	return deleted
 }
 
-func (tree *Runes) prune(parents []*Runes, links []rune) *Runes {
+func (tree *Bytes) prune(parents []*Bytes, links []byte) *Bytes {
 	if tree.edges != nil {
 		return tree
 	}
@@ -302,16 +294,16 @@ func (tree *Runes) prune(parents []*Runes, links []rune) *Runes {
 	return tree
 }
 
-func (tree *Runes) compress() {
+func (tree *Bytes) compress() {
 	if len(tree.edges) != 1 || tree.leaf != nil {
 		return
 	}
 	for _, edge := range tree.edges {
-		pfx := make([]rune, len(tree.prefix)+1+len(edge.node.prefix))
+		pfx := make([]byte, len(tree.prefix)+1+len(edge.node.prefix))
 		copy(pfx, tree.prefix)
 		pfx[len(tree.prefix)] = edge.radix
 		copy(pfx[len(tree.prefix)+1:], edge.node.prefix)
-		tree.prefix = pfx
+		tree.prefix = string(pfx)
 		tree.leaf = edge.node.leaf
 		tree.edges = edge.node.edges
 	}
@@ -324,30 +316,27 @@ func (tree *Runes) compress() {
 // The tree is traversed in lexical order, making the output deterministic.
 //
 // Walk can be thought of as GetItemsWithPrefix(key)
-func (tree *Runes) Walk(k string, walkFn WalkFunc) {
-	if k != "" {
-		for key := []rune(k); len(key) != 0; {
-			tree = tree.getEdge(key[0])
-			if tree == nil {
-				return
-			}
-
-			// Consume key data
-			if !runesHasPrefix(key[1:], tree.prefix) {
-				if runesHasPrefix(tree.prefix, key[1:]) {
-					break
-				}
-				return
-			}
-			key = key[len(tree.prefix)+1:]
+func (tree *Bytes) Walk(key string, walkFn WalkFunc) {
+	for len(key) != 0 {
+		if tree = tree.getEdge(key[0]); tree == nil {
+			return
 		}
+
+		// Consume key data
+		if !strings.HasPrefix(key[1:], tree.prefix) {
+			if strings.HasPrefix(tree.prefix, key[1:]) {
+				break
+			}
+			return
+		}
+		key = key[len(tree.prefix)+1:]
 	}
 
 	// Walk down tree starting at node located at key
 	tree.walk(walkFn)
 }
 
-func (tree *Runes) walk(walkFn WalkFunc) bool {
+func (tree *Bytes) walk(walkFn WalkFunc) bool {
 	if tree.leaf != nil && walkFn(tree.leaf.key, tree.leaf.value) {
 		return true
 	}
@@ -366,22 +355,25 @@ func (tree *Runes) walk(walkFn WalkFunc) bool {
 // The tree is traversed in lexical order, making the output deterministic.
 //
 // WalkPath can be thought of as GetItemsThatArePrefixOf((key)
-func (tree *Runes) WalkPath(key string, walkFn WalkFunc) {
-	if tree.leaf != nil && walkFn("", tree.leaf.value) {
-		return
-	}
-	iter := tree.NewIterator()
-	for _, r := range key {
-		if !iter.Next(r) {
+func (tree *Bytes) WalkPath(key string, walkFn WalkFunc) {
+	for {
+		if tree.leaf != nil && walkFn(tree.leaf.key, tree.leaf.value) {
 			return
 		}
-		if value, ok := iter.Value(); ok {
-			if walkFn(iter.node.leaf.key, value) {
-				return
-			}
+
+		if len(key) == 0 {
+			return
 		}
+
+		if tree = tree.getEdge(key[0]); tree == nil {
+			return
+		}
+
+		if !strings.HasPrefix(key[1:], tree.prefix) {
+			return
+		}
+		key = key[len(tree.prefix)+1:]
 	}
-	return
 }
 
 // Inspect walks every node of the tree, whether or not it holds a value,
@@ -393,18 +385,17 @@ func (tree *Runes) WalkPath(key string, walkFn WalkFunc) {
 // returns Skip, Inspect will not descend into the node's edges.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (tree *Runes) Inspect(inspectFn InspectFunc) {
+func (tree *Bytes) Inspect(inspectFn InspectFunc) {
 	tree.inspect("", "", 0, inspectFn)
 }
 
-func (tree *Runes) inspect(link, key string, depth int, inspectFn InspectFunc) bool {
-	pfx := string(tree.prefix)
-	key += link + pfx
+func (tree *Bytes) inspect(link, key string, depth int, inspectFn InspectFunc) bool {
+	key += link + tree.prefix
 	var val interface{}
 	if tree.leaf != nil {
 		val = tree.leaf.value
 	}
-	if inspectFn(link, pfx, key, depth, len(tree.edges), val) {
+	if inspectFn(link, tree.prefix, key, depth, len(tree.edges), val) {
 		return true
 	}
 	for _, edge := range tree.edges {
@@ -415,7 +406,7 @@ func (tree *Runes) inspect(link, key string, depth int, inspectFn InspectFunc) b
 	return false
 }
 
-func (tree *Runes) getEdge(radix rune) *Runes {
+func (tree *Bytes) getEdge(radix byte) *Bytes {
 	count := len(tree.edges)
 	idx := sort.Search(count, func(i int) bool {
 		return tree.edges[i].radix >= radix
@@ -426,24 +417,24 @@ func (tree *Runes) getEdge(radix rune) *Runes {
 	return nil
 }
 
-func (tree *Runes) addEdge(e runeEdge) {
+func (tree *Bytes) addEdge(e byteEdge) {
 	count := len(tree.edges)
 	idx := sort.Search(count, func(i int) bool {
 		return tree.edges[i].radix >= e.radix
 	})
-	tree.edges = append(tree.edges, runeEdge{})
+	tree.edges = append(tree.edges, byteEdge{})
 	copy(tree.edges[idx+1:], tree.edges[idx:])
 	tree.edges[idx] = e
 }
 
-func (tree *Runes) delEdge(radix rune) {
+func (tree *Bytes) delEdge(radix byte) {
 	count := len(tree.edges)
 	idx := sort.Search(count, func(i int) bool {
 		return tree.edges[i].radix >= radix
 	})
 	if idx < count && tree.edges[idx].radix == radix {
 		copy(tree.edges[idx:], tree.edges[idx+1:])
-		tree.edges[len(tree.edges)-1] = runeEdge{}
+		tree.edges[len(tree.edges)-1] = byteEdge{}
 		tree.edges = tree.edges[:len(tree.edges)-1]
 	}
 }

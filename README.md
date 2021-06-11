@@ -6,13 +6,18 @@
 [![codecov](https://codecov.io/gh/gammazero/radixtree/branch/master/graph/badge.svg)](https://codecov.io/gh/gammazero/radixtree)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Package `radixtree` implements multiple forms of an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree.  This data structure is useful to quickly lookup data, using only the portion of the key that prefixes existing data.  It is also useful for finding items whose keys are a prefix of a search key (i.e. are found along the way when retrieving an item identified by a key), or when finding items whose keys are prefixed by the serach key (i.e. are found at or after a key).  When different values are stored using keys that have a common prefix, the common part of the key is only stored once.  Consider this when keys are similar to an OID, filepath, geohash, network address, etc.
+Package `radixtree` implements multiple forms of an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree.  This data structure is useful to quickly lookup data by key, find find data whose keys have a common prefix, or find data whose keys are a prefix (i.e. found along the way) of a search key.
 
-This radix tree is adaptive in the sense that nodes are not constant size, having as few or many children as needed, up to the number of different key segments to traverse to the next branch or value.
+The implementations are optimized for Get performance and allocates 0 bytes of heap memory per Get or Walk; therefore no garbage to collect.  Once the radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the radixtree. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
 
-An iterator for each type of radix tree allows a tree to be traversed one key segment at a time.  This is useful for incremental lookups of partial keys.  Iterators can be copied in order to branched a search, and copies iterated concurrently.
+This radix tree offers the following features:
 
-The implementations are optimized for Get performance and allocates 0 bytes of heap memory per Get; therefore no garbage to collect.  Once the radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the radixtree. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
+- Multiple types of radix tree: Bytes, Paths, Runes
+- Efficient: Operations for all types of radix tree are O(k).  Zero memory allocation for all read operations.
+- Compact: When values are stored using keys that have a common prefix, the common part of the key is only stored once.  Consider this when keys are similar to an OID, filepath, geohash, network address, etc. Nodes that do not branch or contain values are compressed out of the tree.
+- Adaptive: This radix tree is adaptive in the sense that nodes are not constant size, having only as many children that are needed, from zero to the maximum possible number of different key segments.
+- Iterators: An iterator for each type of radix tree allows a tree to be traversed one key segment at a time.  This is useful for incremental lookup.  Iterators can be copied in order to branch a search, and iterate the copies concurrently.
+- Ordered iteration: Walking and iterating the tree is done in lexical order, making the output deterministic.
 
 ## Install
 
@@ -31,7 +36,7 @@ import (
 )
 
 func main() {
-    rt := new(radixtree.Runes)
+    rt := new(radixtree.Bytes)
     rt.Put("tomato", "TOMATO")
     rt.Put("tom", "TOM")
     rt.Put("tommy", "TOMMY")
