@@ -710,43 +710,18 @@ func TestBytesStringConvert(t *testing.T) {
 			t.Fatalf("returned wrong value - expected %q got %q", w, s)
 		}
 	}
-	t.Log(dump(tree))
 	tree.Walk("", func(key string, val interface{}) bool {
 		t.Log("Key:", key)
 		s, ok := val.(string)
 		if !ok {
+			t.Log(dump(tree))
 			t.Fatal("value is not a string")
 		}
 		t.Log("Val:", s)
 		if key != s {
-			t.Error("Key and value do not match")
+			t.Log(dump(tree))
+			t.Fatal("Key and value do not match")
 		}
 		return false
 	})
-
-	words, err := loadWords(wordsPath)
-	if err != nil {
-		panic(err)
-	}
-	tree = New()
-	var p, pp, ppp string
-	for _, w := range words {
-		tree.Put(w, w)
-		v, _ := tree.Get(w)
-		if v == nil {
-			t.Log("previous values:", p, pp, ppp)
-			t.Fatal("did not insert value:", w)
-		}
-		s, ok := v.(string)
-		if !ok {
-			t.Fatal("value is not a string")
-		}
-		if s != w {
-			t.Fatalf("returned wrong value - expected %q got %q", w, s)
-		}
-
-		ppp = pp
-		pp = p
-		p = w
-	}
 }
