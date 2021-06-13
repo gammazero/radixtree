@@ -6,8 +6,6 @@ import (
 )
 
 // Bytes is a radix tree of bytes with string keys and interface{} values.
-// Non-terminal nodes have nil values, so a stored nil value is not
-// distinguishable and is not included in Walk or WalkPath.
 type Bytes struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
@@ -38,9 +36,9 @@ func (e byteEdges) Less(i, j int) bool { return e[i].radix < e[j].radix }
 func (e byteEdges) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
 
 // BytesIterator is a stateful iterator that traverses a Bytes radix tree one
-// character at a time.
+// byte at a time.
 //
-// Note: Any modification to the tree invalidates the iterator.
+// Any modification to the tree invalidates the iterator.
 type BytesIterator struct {
 	p    int
 	node *Bytes
@@ -70,7 +68,7 @@ func (it *BytesIterator) Copy() *BytesIterator {
 // returned.  Otherwise false is returned.
 //
 // When false is returned the iterator is not modified. This allows different
-// values to be used, in subsequent calls to Next, to advance the iterator from
+// values to be used in subsequent calls to Next, to advance the iterator from
 // its current position.
 func (it *BytesIterator) Next(radix byte) bool {
 	// The tree.prefix represents single-edge parents without values that were
@@ -96,7 +94,7 @@ func (it *BytesIterator) Next(radix byte) bool {
 }
 
 // Value returns the value at the current iterator position, and true or false
-// to indicate if there is a value at the position.
+// to indicate if a value is present at the position.
 func (it *BytesIterator) Value() (interface{}, bool) {
 	// Only return value if all of this node's prefix was matched.  Otherwise,
 	// have not fully traversed into this node (edge not completely traversed).
@@ -109,8 +107,8 @@ func (it *BytesIterator) Value() (interface{}, bool) {
 	return it.node.leaf.value, true
 }
 
-// Get returns the value stored at the given key.  Returns false if the key does
-// not identify a node that has a value.
+// Get returns the value stored at the given key.  Returns false if there is no
+// value present for the key.
 func (tree *Bytes) Get(key string) (interface{}, bool) {
 	for {
 		// All key data consumed and matched against node prefix, so this is
@@ -225,11 +223,9 @@ func (tree *Bytes) split(p int) {
 	tree.leaf = nil
 }
 
-// Delete removes the value associated with the given key.  Returns true if a
-// node was found for the given key, and that node held a value.  If the node
-// has no edges (is a leaf node) it is removed from the tree.  If any of of the
-// node's ancestors becomes childless as a result, they are also removed from
-// the tree.
+// Delete removes the value associated with the given key. Returns true if
+// there was a value stored for the key. If the node or any of its ancestors
+// becomes childless as a result, they are removed from the tree.
 func (tree *Bytes) Delete(key string) bool {
 	node := tree
 	var (
@@ -352,8 +348,8 @@ func (tree *Bytes) walk(walkFn WalkFunc) bool {
 	return false
 }
 
-// WalkPath walks the path in tree from the root to the node at the given key,
-// calling walkFn for each node that has a value.  If walkFn returns true,
+// WalkPath walks a path in the tree from the root to the node at the given
+// key, calling walkFn for each node that has a value.  If walkFn returns true,
 // WalkPath returns.
 //
 // The tree is traversed in lexical order, making the output deterministic.
@@ -385,8 +381,7 @@ func (tree *Bytes) WalkPath(key string, walkFn WalkFunc) {
 // structure of the tree to be examined and detailed statistics to be
 // collected.
 //
-// If inspectFn returns an error, the traversal is aborted.  If inspectFn
-// returns Skip, Inspect will not descend into the node's edges.
+// If inspectFn returns false, the traversal is stopped and Inspect returns.
 //
 // The tree is traversed in lexical order, making the output deterministic.
 func (tree *Bytes) Inspect(inspectFn InspectFunc) {
@@ -410,6 +405,7 @@ func (tree *Bytes) inspect(link, key string, depth int, inspectFn InspectFunc) b
 	return false
 }
 
+// getEdge binary searchs for edge
 func (tree *Bytes) getEdge(radix byte) *Bytes {
 	count := len(tree.edges)
 	idx := sort.Search(count, func(i int) bool {
@@ -421,6 +417,7 @@ func (tree *Bytes) getEdge(radix byte) *Bytes {
 	return nil
 }
 
+// addEdge binary searchs to find where to insert edge, and inserts at
 func (tree *Bytes) addEdge(e byteEdge) {
 	count := len(tree.edges)
 	idx := sort.Search(count, func(i int) bool {
@@ -431,6 +428,7 @@ func (tree *Bytes) addEdge(e byteEdge) {
 	tree.edges[idx] = e
 }
 
+// delEdge binary searches for edge and removes it
 func (tree *Bytes) delEdge(radix byte) {
 	count := len(tree.edges)
 	idx := sort.Search(count, func(i int) bool {

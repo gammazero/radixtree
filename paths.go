@@ -10,10 +10,7 @@ const defaultPathSeparator = "/"
 // Paths is a radix tree of paths with string keys and interface{}
 // values. Paths splits keys by separator, for example, "/a/b/c" splits to
 // "/a", "/b", "/c". A different path separator string may be specified by
-// setting by calling NewPaths with a the string to use as a separator.
-//
-// Non-terminal nodes have nil values, so a stored nil value is not
-// distinguishable and is not be included in Walk or WalkPath.
+// calling NewPaths with the separator to use.
 type Paths struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
@@ -23,11 +20,11 @@ type Paths struct {
 	leaf    *leaf
 }
 
-// NewPaths creates a new Paths instance allowin the path separator to be set.
+// NewPaths creates a new Paths instance, specifying the path separator to use.
 //
 // The pathSeparator splits a path key into separate segments.  The default
 // path separator is forward slash.  This variable may be set to any string to
-// allow a different path separator, multi-character strings are OK.
+// use as a path separator, multi-character strings are OK.
 func NewPaths(pathSeparator string) *Paths {
 	return &Paths{
 		pathSep: pathSeparator,
@@ -56,7 +53,7 @@ func (e pathEdges) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
 
 // PathsIterator traverses a Paths radix tree one path segment at a time.
 //
-// Note: Any modification to the tree invalidates the iterator.
+// Any modification to the tree invalidates the iterator.
 type PathsIterator struct {
 	p       int
 	node    *Paths
@@ -89,10 +86,10 @@ func (it *PathsIterator) Copy() *PathsIterator {
 // is returned.  Otherwise false is returned.
 //
 // When false is returned the iterator is not modified. This allows different
-// values to be used, in subsequent calls to Next, to advance the iterator from
+// values to be used in subsequent calls to Next, to advance the iterator from
 // its current position.
 //
-// Any part subsequent to the first, must begin with the PathSeparator.
+// Any part subsequent to the first must begin with the PathSeparator.
 func (it *PathsIterator) Next(part string) bool {
 	if part == "" {
 		return false
@@ -101,23 +98,29 @@ func (it *PathsIterator) Next(part string) bool {
 
 	if it.p < len(it.node.prefix) {
 		if part == it.node.prefix[it.p] {
+			// Key matches prefix so far, ok to continue.
 			it.p++
 			return true
 		}
+		// Some unmatched prefix remains, node not found
 		return false
 	}
 	node := it.node.getEdge(part)
 	if node == nil {
+		// No more prefix, no edges, so node not found
 		return false
 	}
+	// Key symbol matched up to this edge, ok to continue.
 	it.p = 0
 	it.node = node
 	return true
 }
 
 // Value returns the value at the current iterator position, and true or false
-// to indicate if there is a value at the position.
+// to indicate if a value is present at the position.
 func (it *PathsIterator) Value() (interface{}, bool) {
+	// Only return value if all of this node's prefix was matched.  Otherwise,
+	// have not fully traversed into this node (edge not completely traversed).
 	if it.p != len(it.node.prefix) {
 		return nil, false
 	}
@@ -127,8 +130,8 @@ func (it *PathsIterator) Value() (interface{}, bool) {
 	return it.node.leaf.value, true
 }
 
-// Get returns the value stored at the given key.  Returns false if the key does
-// not identify a node that has a value.
+// Get returns the value stored at the given key.  Returns false if there is no
+// value present for the key.
 func (tree *Paths) Get(key string) (interface{}, bool) {
 	pathSep := tree.PathSeparator()
 	iter := tree.NewIterator()
@@ -141,7 +144,7 @@ func (tree *Paths) Get(key string) (interface{}, bool) {
 }
 
 // Put inserts the value into the tree at the given key, replacing any existing
-// items.  It returns true if the put adds a new value, false if it replaces an
+// items.  It returns true if it adds a new value, false if it replaces an
 // existing value.
 func (tree *Paths) Put(key string, value interface{}) bool {
 	var (
@@ -234,9 +237,9 @@ func (tree *Paths) split(p int) {
 	tree.leaf = nil
 }
 
-// Delete removes the value associated with the given key. Returns true if a
-// node was found for the given key. If the node or any of its ancestors
-// becomes childless as a result, it is removed from the tree.
+// Delete removes the value associated with the given key. Returns true if
+// there was a value stored for the key. If the node or any of its ancestors
+// becomes childless as a result, they are removed from the tree.
 func (tree *Paths) Delete(key string) bool {
 	node := tree
 	var (
@@ -356,8 +359,8 @@ func (tree *Paths) walk(walkFn WalkFunc) bool {
 	return false
 }
 
-// WalkPath walks the path in tree from the root to the node at the given key,
-// calling walkFn for each node that has a value.  If walkFn returns true,
+// WalkPath walks a path in the tree from the root to the node at the given
+// key, calling walkFn for each node that has a value.  If walkFn returns true,
 // WalkPath returns.
 //
 // The tree is traversed in lexical order, making the output deterministic.
@@ -386,8 +389,7 @@ func (tree *Paths) WalkPath(key string, walkFn WalkFunc) {
 // structure of the tree to be examined and detailed statistics to be
 // collected.
 //
-// If inspectFn returns an error, the traversal is aborted.  If inspectFn
-// returns Skip, Inspect will not descend into the node's children.
+// If inspectFn returns false, the traversal is stopped and Inspect returns.
 //
 // The tree is traversed in lexical order, making the output deterministic.
 func (tree *Paths) Inspect(inspectFn InspectFunc) {
@@ -459,6 +461,7 @@ func pathNext(path, pathSep string, start int) (string, int) {
 	return path[start:end], next
 }
 
+// getEdge binary searchs for edge
 func (tree *Paths) getEdge(radix string) *Paths {
 	count := len(tree.edges)
 	idx := sort.Search(count, func(i int) bool {
@@ -470,6 +473,7 @@ func (tree *Paths) getEdge(radix string) *Paths {
 	return nil
 }
 
+// addEdge binary searchs to find where to insert edge, and inserts at
 func (tree *Paths) addEdge(e pathEdge) {
 	count := len(tree.edges)
 	idx := sort.Search(count, func(i int) bool {
@@ -480,6 +484,7 @@ func (tree *Paths) addEdge(e pathEdge) {
 	tree.edges[idx] = e
 }
 
+// delEdge binary searches for edge and removes it
 func (tree *Paths) delEdge(radix string) {
 	count := len(tree.edges)
 	idx := sort.Search(count, func(i int) bool {
