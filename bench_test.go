@@ -14,8 +14,12 @@ const (
 //
 // Benchmarks
 //
-func BenchmarkWordsMap(b *testing.B) {
+func BenchmarkWordsMapGet(b *testing.B) {
 	benchmarkMapToCompareWithGet(wordsPath, b)
+}
+
+func BenchmarkWordsMapPut(b *testing.B) {
+	benchmarkMapToCompareWithPut(wordsPath, b)
 }
 
 func BenchmarkWordsBytesGet(b *testing.B) {
@@ -32,22 +36,6 @@ func BenchmarkWordsBytesWalk(b *testing.B) {
 
 func BenchmarkWordsBytesWalkPath(b *testing.B) {
 	benchmarkBytesWalkPath(wordsPath, b)
-}
-
-func BenchmarkWordsRunesGet(b *testing.B) {
-	benchmarkRunesGet(wordsPath, b)
-}
-
-func BenchmarkWordsRunesPut(b *testing.B) {
-	benchmarkRunesPut(wordsPath, b)
-}
-
-func BenchmarkWordsRunesWalk(b *testing.B) {
-	benchmarkRunesWalk(wordsPath, b)
-}
-
-func BenchmarkWordsRunesWalkPath(b *testing.B) {
-	benchmarkRunesWalkPath(wordsPath, b)
 }
 
 // ----- Web2a -----
@@ -70,22 +58,6 @@ func BenchmarkWeb2aBytesWalk(b *testing.B) {
 
 func BenchmarkWeb2aBytesWalkPath(b *testing.B) {
 	benchmarkBytesWalkPath(web2aPath, b)
-}
-
-func BenchmarkWeb2aRunesGet(b *testing.B) {
-	benchmarkRunesGet(web2aPath, b)
-}
-
-func BenchmarkWeb2aRunesPut(b *testing.B) {
-	benchmarkRunesPut(web2aPath, b)
-}
-
-func BenchmarkWeb2aRunesWalk(b *testing.B) {
-	benchmarkRunesWalk(web2aPath, b)
-}
-
-func BenchmarkWeb2aRunesWalkPath(b *testing.B) {
-	benchmarkRunesWalkPath(web2aPath, b)
 }
 
 func BenchmarkWeb2aPathsPut(b *testing.B) {
@@ -121,6 +93,25 @@ func benchmarkMapToCompareWithGet(filePath string, b *testing.B) {
 			if !ok {
 				panic("missing value")
 			}
+		}
+	}
+}
+
+func benchmarkMapToCompareWithPut(filePath string, b *testing.B) {
+	words, err := loadWords(filePath)
+	if err != nil {
+		b.Skip(err.Error())
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for n := 0; n < b.N; n++ {
+		m := map[string]string{}
+		for _, w := range words {
+			m[w] = w
+		}
+		if len(m) != len(words) {
+			panic("wrong size map")
 		}
 	}
 }
@@ -190,95 +181,6 @@ func benchmarkBytesWalkPath(filePath string, b *testing.B) {
 		b.Skip(err.Error())
 	}
 	tree := new(Bytes)
-	for _, w := range words {
-		tree.Put(w, w)
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	var count int
-	for n := 0; n < b.N; n++ {
-		count = 0
-		for _, w := range words {
-			tree.WalkPath(w, func(key string, value interface{}) bool {
-				count++
-				return false
-			})
-		}
-	}
-	if count <= len(words) {
-		panic("wrong count")
-	}
-}
-
-func benchmarkRunesPut(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		tree := new(Runes)
-		for _, w := range words {
-			tree.Put(w, w)
-		}
-	}
-}
-
-func benchmarkRunesGet(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	tree := new(Runes)
-	for _, w := range words {
-		tree.Put(w, w)
-		v, ok := tree.Get(w)
-		if !ok || v == nil {
-			panic("did not insert value: " + w)
-		}
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		for _, w := range words {
-			if _, ok := tree.Get(w); !ok {
-				panic("missing value for " + w)
-			}
-		}
-	}
-}
-
-func benchmarkRunesWalk(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	tree := new(Runes)
-	for _, w := range words {
-		tree.Put(w, w)
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	var count int
-	for n := 0; n < b.N; n++ {
-		count = 0
-		tree.Walk("", func(k string, value interface{}) bool {
-			count++
-			return false
-		})
-	}
-	if count != len(words) {
-		panic("wrong count")
-	}
-}
-
-func benchmarkRunesWalkPath(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	tree := new(Runes)
 	for _, w := range words {
 		tree.Put(w, w)
 	}

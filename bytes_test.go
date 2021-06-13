@@ -5,7 +5,7 @@ import (
 )
 
 func TestBytesAddEnd(t *testing.T) {
-	rt := new(Bytes)
+	rt := New()
 	rt.Put("tomato", "TOMATO")
 	if len(rt.edges) != 1 {
 		t.Fatal("root should have 1 child")
@@ -71,7 +71,7 @@ func TestBytesAddEnd(t *testing.T) {
 }
 
 func TestBytesAddFront(t *testing.T) {
-	rt := new(Bytes)
+	rt := New()
 	rt.Put("tom", "TOM")
 	t.Log(dump(rt))
 	// (root) t-> ("om", TOM)
@@ -118,7 +118,7 @@ func TestBytesAddFront(t *testing.T) {
 }
 
 func TestBytesAddBranch(t *testing.T) {
-	rt := new(Bytes)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 
@@ -197,7 +197,7 @@ func TestBytesAddBranch(t *testing.T) {
 }
 
 func TestBytesAddBranchToBranch(t *testing.T) {
-	rt := new(Bytes)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -253,7 +253,7 @@ func TestBytesAddBranchToBranch(t *testing.T) {
 }
 
 func TestBytesAddExisting(t *testing.T) {
-	rt := new(Bytes)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -315,7 +315,7 @@ func TestBytesAddExisting(t *testing.T) {
 }
 
 func TestBytesDelete(t *testing.T) {
-	rt := new(Bytes)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -355,7 +355,7 @@ func TestBytesDelete(t *testing.T) {
 }
 
 func TestBytesBuildEdgeCases(t *testing.T) {
-	tree := new(Bytes)
+	tree := New()
 
 	tree.Put("ABCD", 1)
 	t.Log(dump(tree))
@@ -494,7 +494,7 @@ func TestBytesBuildEdgeCases(t *testing.T) {
 }
 
 func TestBytesCopyIterator(t *testing.T) {
-	rt := new(Bytes)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -572,7 +572,7 @@ func TestBytesCopyIterator(t *testing.T) {
 }
 
 func TestSimpleBytesWalk(t *testing.T) {
-	rt := new(Bytes)
+	rt := New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tornado", "TORNADO")
@@ -656,7 +656,7 @@ func TestBytesEdgeSort(t *testing.T) {
 }
 
 func TestBytesAppleCart(t *testing.T) {
-	r := new(Bytes)
+	r := New()
 	r.Put("apple", "APPLE")
 	r.Put("applecart", "APPLECART")
 	val, ok := r.Get("app")
@@ -667,31 +667,31 @@ func TestBytesAppleCart(t *testing.T) {
 }
 
 func TestBytes(t *testing.T) {
-	testRadixTree(t, new(Bytes))
+	testRadixTree(t, New())
 }
 
 func TestBytesNilGet(t *testing.T) {
-	testNilGet(t, new(Bytes))
+	testNilGet(t, New())
 }
 
 func TestBytesRoot(t *testing.T) {
-	testRoot(t, new(Bytes))
+	testRoot(t, New())
 }
 
 func TestBytesWalk(t *testing.T) {
-	testWalk(t, new(Bytes))
+	testWalk(t, New())
 }
 
 func TestBytesWalkStop(t *testing.T) {
-	testWalkStop(t, new(Bytes))
+	testWalkStop(t, New())
 }
 
 func TestBytesInspectStop(t *testing.T) {
-	testInspectStop(t, new(Bytes))
+	testInspectStop(t, New())
 }
 
 func TestBytesStringConvert(t *testing.T) {
-	tree := new(Bytes)
+	tree := New()
 	for _, w := range []string{"Bart", `Bartók`, `AbónXw`, `AbónYz`} {
 		ok := tree.Put(w, w)
 		if !ok {
@@ -729,7 +729,7 @@ func TestBytesStringConvert(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	tree = new(Bytes)
+	tree = New()
 	var p, pp, ppp string
 	for _, w := range words {
 		tree.Put(w, w)

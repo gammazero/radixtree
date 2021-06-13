@@ -8,7 +8,7 @@ import (
 func TestPathsAddEnd(t *testing.T) {
 	// add "/L1/L2", 1
 	// (root) /L1-> ("/L2", 1)
-	tree := new(Paths)
+	tree := NewPaths("/")
 	tree.Put("/L1/L2", 1)
 	t.Log(dump(tree))
 	if len(tree.edges) != 1 {
@@ -114,7 +114,7 @@ func TestPathsAddBranch(t *testing.T) {
 }
 
 func TestPathsAddBranchToBranch(t *testing.T) {
-	tree := new(Paths)
+	tree := NewPaths("/")
 	tree.Put("/L1/L2", 1)
 	tree.Put("/L1/L2/L3A", 2)
 	tree.Put("/L1/L2/L3B/L4", 3)
@@ -176,7 +176,7 @@ func TestPathsAddBranchToBranch(t *testing.T) {
 }
 
 func TestPathsAddExisting(t *testing.T) {
-	tree := new(Paths)
+	tree := NewPaths("/")
 	tree.Put("/L1/L2", 1)
 	tree.Put("/L1/L2/L3A", 2)
 	tree.Put("/L1/L2/L3B/L4", 3)
@@ -215,7 +215,7 @@ func TestPathsAddExisting(t *testing.T) {
 }
 
 func TestPathsDelete(t *testing.T) {
-	tree := new(Paths)
+	tree := NewPaths("/")
 	tree.Put("/L1/L2", 1)
 	tree.Put("/L1/L2/L3A", 2)
 	tree.Put("/L1/L2/L3B/L4", 3)
@@ -348,7 +348,7 @@ func TestPathsDelete(t *testing.T) {
 }
 
 func TestPathsCopyIterator(t *testing.T) {
-	tree := new(Paths)
+	tree := NewPaths("/")
 	tree.Put("/L1/L2", 1)
 	tree.Put("/L1/L2/L3A", 2)
 	tree.Put("/L1/L2/L3B/L4", 3)
@@ -414,7 +414,7 @@ func TestPathsCopyIterator(t *testing.T) {
 }
 
 func TestSimplePathWalk(t *testing.T) {
-	rt := new(Paths)
+	rt := NewPaths("/")
 	rt.Put("tom/ato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("torn/ad/o", "TORNADO")
@@ -479,25 +479,25 @@ func TestPathsEdgeSort(t *testing.T) {
 }
 
 func TestPaths(t *testing.T) {
-	testRadixTree(t, new(Paths))
+	testRadixTree(t, NewPaths("/"))
 }
 
 func TestPathsNilGet(t *testing.T) {
-	testNilGet(t, new(Paths))
+	testNilGet(t, NewPaths("/"))
 }
 
 func TestPathsRoot(t *testing.T) {
-	testRoot(t, new(Paths))
+	testRoot(t, NewPaths("/"))
 }
 
 func TestPathsWalk(t *testing.T) {
-	testWalk(t, new(Paths))
+	testWalk(t, NewPaths("/"))
 }
 
 func TestPathsWalkStop(t *testing.T) {
-	testWalkStop(t, new(Paths))
+	testWalkStop(t, NewPaths("/"))
 }
 
 func TestPathsInspectStop(t *testing.T) {
-	testInspectStop(t, new(Paths))
+	testInspectStop(t, NewPaths("/"))
 }

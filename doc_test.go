@@ -7,8 +7,8 @@ import (
 	"github.com/gammazero/radixtree"
 )
 
-func ExampleRunes_Walk() {
-	rt := new(radixtree.Bytes)
+func Example_Walk() {
+	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tommy", "TOMMY")
@@ -22,7 +22,7 @@ func ExampleRunes_Walk() {
 }
 
 func ExampleRunes_WalkPath() {
-	rt := new(radixtree.Bytes)
+	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tommy", "TOMMY")
@@ -39,15 +39,16 @@ func ExampleRunes_WalkPath() {
 }
 
 func ExampleRunes_NewIterator() {
-	rt := new(radixtree.Runes)
+	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tommy", "TOMMY")
 	rt.Put("tornado", "TORNADO")
 
 	iter := rt.NewIterator()
-	for _, r := range "tomato" {
-		if !iter.Next(r) {
+	word := "tomato"
+	for i := range word {
+		if !iter.Next(word[i]) {
 			break
 		}
 		if val, ok := iter.Value(); ok {
@@ -60,7 +61,7 @@ func ExampleRunes_NewIterator() {
 }
 
 func ExamplePaths_Walk() {
-	pt := new(radixtree.Paths)
+	pt := radixtree.NewPaths("/")
 	pt.Put("home/abc", "my home directory")
 	pt.Put("home/abc/a1.txt", "some text")
 	pt.Put("home/abc/Documents", "my documents")
@@ -75,7 +76,7 @@ func ExamplePaths_Walk() {
 }
 
 func ExamplePaths_WalkPath() {
-	pt := new(radixtree.Paths)
+	pt := radixtree.NewPaths("/")
 	pt.Put("home/abc", "my home directory")
 	pt.Put("home/abc/a1.txt", "some text")
 	pt.Put("home/abc/Documents", "my documents")
@@ -94,7 +95,7 @@ func ExamplePaths_WalkPath() {
 }
 
 func ExamplePaths_NewIterator() {
-	pt := new(radixtree.Paths)
+	pt := radixtree.NewPaths("/")
 	pt.Put("home/abc", "my home directory")
 	pt.Put("home/abc/a1.txt", "some text")
 	pt.Put("home/abc/Documents", "my documents")

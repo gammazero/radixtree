@@ -4,8 +4,8 @@ compressed trie or prefix tree.  It is adaptive in the sense that nodes are not
 constant size, having as few or many children as needed, up to the number of
 different key segments to traverse to the next branch or value.
 
-This package provides multiple types of radix tree: Bytes, Paths, and Runes, where
-each key symbol (radix) is a byte, path segment, or rune respecitvely.
+This package provides multiple types of radix tree: Bytes and Paths, where each
+key symbol (radix) is a byte or a path segment, respecitvely.
 
 The implementations are optimized for Get performance and allocates 0 bytes of
 heap memory per Get; therefore no garbage to collect.  Once the radix tree is

@@ -313,7 +313,7 @@ func testWalk(t *testing.T, tree rtree) {
 	if visited[keys[2]] != 0 {
 		t.Error(keys[2], " should not have been visited")
 	}
-	// Do not test /rats since that is visited by Runes but not Paths
+	// Do not test /rats since that is visited by Bytes but not Paths
 	if visited[keys[5]] != 1 {
 		t.Error(keys[5], " should have been visited")
 	}

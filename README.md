@@ -8,11 +8,11 @@
 
 Package `radixtree` implements multiple forms of an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree.  This data structure is useful to quickly lookup data by key, find find data whose keys have a common prefix, or find data whose keys are a prefix (i.e. found along the way) of a search key.
 
-The implementations are optimized for Get performance and allocates 0 bytes of heap memory per Get or Walk; therefore no garbage to collect.  Once the radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the radixtree. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
+The implementations are optimized for Get performance and allocates 0 bytes of heap memory for any read operation (Get, Walk, WalkPath, etc.); therefore no garbage to collect.  Once the radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the radixtree. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
 
 This radix tree offers the following features:
 
-- Multiple types of radix tree: Bytes, Paths, Runes
+- Multiple types of radix tree: Bytes, Paths
 - Efficient: Operations for all types of radix tree are O(k).  Zero memory allocation for all read operations.
 - Compact: When values are stored using keys that have a common prefix, the common part of the key is only stored once.  Consider this when keys are similar to an OID, filepath, geohash, network address, etc. Nodes that do not branch or contain values are compressed out of the tree.
 - Adaptive: This radix tree is adaptive in the sense that nodes are not constant size, having only as many children that are needed, from zero to the maximum possible number of different key segments.
@@ -36,20 +36,22 @@ import (
 )
 
 func main() {
-    rt := new(radixtree.Bytes)
+    rt := radixtree.New()
     rt.Put("tomato", "TOMATO")
     rt.Put("tom", "TOM")
     rt.Put("tommy", "TOMMY")
     rt.Put("tornado", "TORNADO")
 
-    val := rt.Get("tom")
-    fmt.Println("Found", val)
+    val, found := rt.Get("tom")
+    if found {
+        fmt.Println("Found", val)
+    }
     // Output: Found TOM
 
     // Find all items whose keys start with "tom"
-    rt.Walk("tom", func(key fmt.Stringer, value interface{}) error {
+    rt.Walk("tom", func(key string, value interface{}) bool {
         fmt.Println(value)
-        return nil
+        return false
     })
     // Output:
     // TOM
@@ -57,24 +59,10 @@ func main() {
     // TOMMY
 
     // Find all items whose keys are a prefix of "tomato"
-    rt.WalkPath("tomato", func(key string, value interface{}) error {
+    rt.WalkPath("tomato", func(key string, value interface{}) bool {
         fmt.Println(value)
-        return nil
+        return false
     })
-    // Output:
-    // TOM
-    // TOMATO
-
-    // Find each item whose key is a prefix of "tomato", using iterator
-    iter := rt.NewIterator()
-    for _, r := range "tomato" {
-        if !iter.Next(r) {
-            break
-        }
-        if val := iter.Value(); val != nil {
-            fmt.Println(val)
-        }
-    }
     // Output:
     // TOM
     // TOMATO
@@ -84,9 +72,13 @@ func main() {
     }
     // Output: Deleted tom
 
-    val = rt.Get("tom")
-    fmt.Println("Found", val)
-    // Output: Found <nil>
+    val, found = rt.Get("tom")
+    if found {
+        fmt.Println("Found", val)
+    } else {
+        fmt.Println("not found")
+    }
+    // Output: not found
 }
 ```
 

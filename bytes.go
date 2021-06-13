@@ -16,6 +16,10 @@ type Bytes struct {
 	leaf   *leaf
 }
 
+func New() *Bytes {
+	return new(Bytes)
+}
+
 type leaf struct {
 	key   string
 	value interface{}
