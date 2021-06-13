@@ -7,7 +7,7 @@ import (
 	"github.com/gammazero/radixtree"
 )
 
-func Example_Walk() {
+func ExampleBytes_Walk() {
 	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
@@ -21,7 +21,7 @@ func Example_Walk() {
 	})
 }
 
-func ExampleRunes_WalkPath() {
+func ExampleBytes_WalkPath() {
 	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
@@ -38,7 +38,7 @@ func ExampleRunes_WalkPath() {
 	// TOMATO
 }
 
-func ExampleRunes_NewIterator() {
+func ExampleBytes_NewIterator() {
 	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")

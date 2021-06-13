@@ -457,8 +457,7 @@ func TestSimplePathWalk(t *testing.T) {
 }
 
 func TestPathsEdgeSort(t *testing.T) {
-	var edges pathEdges
-	edges = []pathEdge{pathEdge{"xyz/987", nil}, pathEdge{"abc/123", nil}}
+	var edges pathEdges = []pathEdge{pathEdge{"xyz/987", nil}, pathEdge{"abc/123", nil}}
 
 	if edges.Len() != 2 {
 		t.Fatal("bad Len")

@@ -634,8 +634,7 @@ func TestSimpleBytesWalk(t *testing.T) {
 
 func TestBytesEdgeSort(t *testing.T) {
 	b := []byte("az")
-	var edges byteEdges
-	edges = []byteEdge{byteEdge{b[1], nil}, byteEdge{b[0], nil}}
+	var edges byteEdges = []byteEdge{byteEdge{b[1], nil}, byteEdge{b[0], nil}}
 
 	if edges.Len() != 2 {
 		t.Fatal("bad Len")

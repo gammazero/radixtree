@@ -379,7 +379,6 @@ func (tree *Paths) WalkPath(key string, walkFn WalkFunc) {
 			}
 		}
 	}
-	return
 }
 
 // Inspect walks every node of the tree, whether or not it holds a value,
