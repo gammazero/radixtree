@@ -7,53 +7,51 @@ import (
 	"github.com/gammazero/radixtree"
 )
 
-//nolint errcheck // Walk only returns error if user function returns error
-func ExampleRunes_Walk() {
-	rt := new(radixtree.Runes)
+func ExampleBytes_Walk() {
+	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tommy", "TOMMY")
 	rt.Put("tornado", "TORNADO")
 
 	// Find all items whose keys start with "tom"
-	rt.Walk("tom", func(key fmt.Stringer, value interface{}) error {
+	rt.Walk("tom", func(key string, value interface{}) bool {
 		fmt.Println(value)
-		return nil
+		return false
 	})
 }
 
-//nolint errcheck // WalkPath only returns error if user function returns error
-func ExampleRunes_WalkPath() {
-	rt := new(radixtree.Runes)
+func ExampleBytes_WalkPath() {
+	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tommy", "TOMMY")
 	rt.Put("tornado", "TORNADO")
 
 	// Find all items that are a prefix of "tomato"
-	rt.WalkPath("tomato", func(key string, value interface{}) error {
+	rt.WalkPath("tomato", func(key string, value interface{}) bool {
 		fmt.Println(value)
-		return nil
+		return false
 	})
 	// Output:
 	// TOM
 	// TOMATO
 }
 
-func ExampleRunes_NewIterator() {
-	rt := new(radixtree.Runes)
+func ExampleBytes_NewIterator() {
+	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tommy", "TOMMY")
 	rt.Put("tornado", "TORNADO")
 
 	iter := rt.NewIterator()
-	for _, r := range "tomato" {
-		if !iter.Next(r) {
+	word := "tomato"
+	for i := range word {
+		if !iter.Next(word[i]) {
 			break
 		}
-		val := iter.Value()
-		if val != nil {
+		if val, ok := iter.Value(); ok {
 			fmt.Println(val)
 		}
 	}
@@ -62,9 +60,8 @@ func ExampleRunes_NewIterator() {
 	// TOMATO
 }
 
-//nolint errcheck // Walk only returns error if user function returns error
 func ExamplePaths_Walk() {
-	pt := new(radixtree.Paths)
+	pt := radixtree.NewPaths("/")
 	pt.Put("home/abc", "my home directory")
 	pt.Put("home/abc/a1.txt", "some text")
 	pt.Put("home/abc/Documents", "my documents")
@@ -72,15 +69,14 @@ func ExamplePaths_Walk() {
 	pt.Put("home/abc/Documents/stuff.pdf", "story")
 
 	// Find all items with keys that start with "home/abc/Documents"
-	pt.Walk("home/abc/Documents", func(key fmt.Stringer, value interface{}) error {
+	pt.Walk("home/abc/Documents", func(key string, value interface{}) bool {
 		fmt.Println(value)
-		return nil
+		return false
 	})
 }
 
-//nolint errcheck // WalkPath only returns error if user function returns error
 func ExamplePaths_WalkPath() {
-	pt := new(radixtree.Paths)
+	pt := radixtree.NewPaths("/")
 	pt.Put("home/abc", "my home directory")
 	pt.Put("home/abc/a1.txt", "some text")
 	pt.Put("home/abc/Documents", "my documents")
@@ -88,9 +84,9 @@ func ExamplePaths_WalkPath() {
 	pt.Put("home/abc/Documents/stuff.pdf", "story")
 
 	// Find item in each path segment
-	pt.WalkPath("home/abc/Documents/pic.png", func(key string, value interface{}) error {
+	pt.WalkPath("home/abc/Documents/pic.png", func(key string, value interface{}) bool {
 		fmt.Println(key, "=>", value)
-		return nil
+		return false
 	})
 	// Output:
 	// home/abc => my home directory
@@ -99,7 +95,7 @@ func ExamplePaths_WalkPath() {
 }
 
 func ExamplePaths_NewIterator() {
-	pt := new(radixtree.Paths)
+	pt := radixtree.NewPaths("/")
 	pt.Put("home/abc", "my home directory")
 	pt.Put("home/abc/a1.txt", "some text")
 	pt.Put("home/abc/Documents", "my documents")
@@ -113,8 +109,7 @@ func ExamplePaths_NewIterator() {
 		if !iter.Next(p) {
 			break
 		}
-		value := iter.Value()
-		if value != nil {
+		if value, ok := iter.Value(); ok {
 			key := strings.Join(parts[:i+1], "/")
 			fmt.Println(key, "=>", value)
 		}
