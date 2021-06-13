@@ -569,6 +569,14 @@ func TestBytesCopyIterator(t *testing.T) {
 	if iterR.Next('n') {
 		t.Fatal("'n' should not have advanced iterator")
 	}
+
+	iter = rt.NewIterator()
+	if !iter.Next('t') {
+		t.Fatal("'t' should have advanced iterator")
+	}
+	if iter.Next('x') {
+		t.Fatal("'x' should not have advanced iterator")
+	}
 }
 
 func TestSimpleBytesWalk(t *testing.T) {

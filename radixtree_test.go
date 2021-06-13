@@ -453,6 +453,15 @@ func testWalk(t *testing.T, tree rtree) {
 			t.Error("should not have visited ", k)
 		}
 	}
+
+	var lastKey string
+	tree.WalkPath("rat/winks/wisely/x/y/z/w", func(key string, value interface{}) bool {
+		lastKey = key
+		return false
+	})
+	if lastKey != "rat/winks/wisely/x/y/z" {
+		t.Error("did not get expected last key")
+	}
 }
 
 func checkVisited(visited map[string]int, expectVisited ...string) error {
@@ -475,16 +484,19 @@ func checkVisited(visited map[string]int, expectVisited ...string) error {
 }
 
 func testWalkStop(t *testing.T, tree rtree) {
-	table := map[string]int{
-		"/L1/L2":        1,
-		"/L1/L2/L3A":    2,
-		"/L1/L2/L3B/L4": 999,
-		"/L1/L2/L3C":    4,
-		"/L1/L2/L3":     5,
+	table := []struct {
+		key string
+		val int
+	}{
+		{"/L1/L2", 1},
+		{"/L1/L2/L3A", 2},
+		{"/L1/L2/L3B/L4", 999},
+		{"/L1/L2/L3C", 4},
+		{"/L1/L2/L3", 5},
 	}
 
-	for key, value := range table {
-		tree.Put(key, value)
+	for i := range table {
+		tree.Put(table[i].key, table[i].val)
 	}
 
 	walkErr := errors.New("walk error")
@@ -508,17 +520,19 @@ func testWalkStop(t *testing.T, tree rtree) {
 }
 
 func testInspectStop(t *testing.T, tree rtree) {
-	table := map[string]int{
-		"/L1/L2":       1,
-		"/L1/L2/L3":    555,
-		"/L1/L2/L3/L4": 999,
-		"/L1/L2/L/C":   3,
-		"/L1/L2/L3/X":  999,
+	table := []struct {
+		key string
+		val int
+	}{
+		{"/L1/L2/L3/X", 999},
+		{"/L1/L2", 1},
+		{"/L1/L2/L3", 555},
+		{"/L1/L2/L3/L4", 999},
+		{"/L1/L2/L/C", 3},
 	}
 
-	for key, value := range table {
-		tree.Put(key, value)
-		t.Log(dump(tree))
+	for i := range table {
+		tree.Put(table[i].key, table[i].val)
 	}
 	var keys []string
 	inspectFn := func(link, prefix, key string, depth, children int, value interface{}) bool {
@@ -529,7 +543,7 @@ func testInspectStop(t *testing.T, tree rtree) {
 		keys = append(keys, key)
 		switch value {
 		case 555:
-			// SKip all this node's children
+			// Stop inspect
 			return true
 		case 999:
 			t.Fatal("should not get here")
