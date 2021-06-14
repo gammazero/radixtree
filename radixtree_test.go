@@ -10,11 +10,12 @@ import (
 // rtree is an interface common to all radix tree types, used for test
 type rtree interface {
 	Get(key string) (interface{}, bool)
-	Put(key string, value interface{}) bool
 	Delete(key string) bool
+	Put(key string, value interface{}) bool
 	Walk(key string, walkFn WalkFunc)
 	WalkPath(key string, walkFn WalkFunc)
 	Inspect(inspectFn InspectFunc)
+	Len() int
 }
 
 // Use the Inspect functionality to create a function to dump the tree.
@@ -55,11 +56,19 @@ func testRadixTree(t *testing.T, tree rtree) {
 		}
 	}
 
+	if tree.Len() != len(keys) {
+		t.Fatalf("wrong length, expected %d, got %d", len(keys), tree.Len())
+	}
+
 	// put again, same keys new values
 	for _, key := range keys {
 		if isNew := tree.Put(key, strings.ToUpper(key)); isNew {
 			t.Errorf("expected key %s to already have a value", key)
 		}
+	}
+
+	if tree.Len() != len(keys) {
+		t.Fatalf("wrong length, expected %d, got %d", len(keys), tree.Len())
 	}
 
 	// get
@@ -126,10 +135,13 @@ func testRadixTree(t *testing.T, tree rtree) {
 		}
 	}
 
-	// delete cleaned all the way to the first character
-	// expect Delete to return false bc no node existed to nil
+	if tree.Len() != 0 {
+		t.Error("expected Len() to return 0 after all keys deleted")
+	}
+
+	// expect Delete to return false bc all nodes deleted
 	for _, key := range keys {
-		if deleted := tree.Delete(string(key)); deleted {
+		if deleted := tree.Delete(key); deleted {
 			t.Errorf("expected key %s to be cleaned by delete", string(key[0]))
 		}
 	}

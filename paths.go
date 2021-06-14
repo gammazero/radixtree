@@ -12,12 +12,17 @@ const defaultPathSeparator = "/"
 // "/a", "/b", "/c". A different path separator string may be specified by
 // calling NewPaths with the separator to use.
 type Paths struct {
+	pathSep string
+	root    pathsNode
+	size    int
+}
+
+type pathsNode struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
-	prefix  []string
-	edges   pathEdges
-	pathSep string
-	leaf    *leaf
+	prefix []string
+	edges  pathEdges
+	leaf   *leaf
 }
 
 // NewPaths creates a new Paths instance, specifying the path separator to use.
@@ -41,7 +46,7 @@ func (tree *Paths) PathSeparator() string {
 
 type pathEdge struct {
 	label string
-	node  *Paths
+	node  *pathsNode
 }
 
 // pathEdges implements sort.Interface
@@ -56,22 +61,228 @@ func (e pathEdges) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
 // Any modification to the tree invalidates the iterator.
 type PathsIterator struct {
 	p       int
-	node    *Paths
+	node    *pathsNode
 	pathSep string
+}
+
+// Len returns the number of values stored in the tree.
+func (tree *Paths) Len() int {
+	return tree.size
+}
+
+// Get returns the value stored at the given key.  Returns false if there is no
+// value present for the key.
+func (tree *Paths) Get(key string) (interface{}, bool) {
+	pathSep := tree.PathSeparator()
+	iter := tree.NewIterator()
+	for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
+		if !iter.Next(part) {
+			return nil, false
+		}
+	}
+	return iter.Value()
+}
+
+// Put inserts the value into the tree at the given key, replacing any existing
+// items.  It returns true if it adds a new value, false if it replaces an
+// existing value.
+func (tree *Paths) Put(key string, value interface{}) bool {
+	var (
+		p          int
+		isNewValue bool
+		hasNewEdge bool
+		newEdge    pathEdge
+	)
+	node := &tree.root
+
+	pathSep := tree.PathSeparator()
+	for part, next := pathNext(key, pathSep, 0); part != ""; part, next = pathNext(key, pathSep, next) {
+		if p < len(node.prefix) {
+			if part == node.prefix[p] {
+				p++
+				continue
+			}
+		} else if child := node.getEdge(part); child != nil {
+			node = child
+			p = 0
+			continue
+		}
+		// Descended as far as prefixes and children match key, and still
+		// have key data, so add child that has a prefix of the unmatched
+		// key data and set its value to the new value.
+		newChild := &pathsNode{
+			leaf: &leaf{
+				key:   key,
+				value: value,
+			},
+		}
+		childLink := part
+		if next != -1 {
+			newChild.prefix = []string{}
+			for next != -1 {
+				part, next = pathNext(key, pathSep, next)
+				newChild.prefix = append(newChild.prefix, part)
+			}
+		}
+		newEdge = pathEdge{childLink, newChild}
+		hasNewEdge = true
+		break
+	}
+	// Key has been consumed by traversing prefixes and/or children, or has
+	// been put into new child.
+
+	// If key partially matches node's prefix, then need to split node.
+	if p < len(node.prefix) {
+		node.split(p)
+		isNewValue = true
+	}
+
+	if hasNewEdge {
+		node.addEdge(newEdge)
+		isNewValue = true
+		tree.size++
+	} else {
+		// Store key at existing child
+		if node.leaf == nil {
+			isNewValue = true
+			tree.size++
+		}
+		node.leaf = &leaf{
+			key:   key,
+			value: value,
+		}
+	}
+
+	return isNewValue
+}
+
+// Delete removes the value associated with the given key. Returns true if
+// there was a value stored for the key. If the node or any of its ancestors
+// becomes childless as a result, they are removed from the tree.
+func (tree *Paths) Delete(key string) bool {
+	node := &tree.root
+	var (
+		parents []*pathsNode
+		parts   []string
+		p       int
+	)
+	pathSep := tree.PathSeparator()
+	for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
+		if p < len(node.prefix) {
+			if part == node.prefix[p] {
+				p++
+				continue
+			}
+			return false
+		}
+		parents = append(parents, node)
+		parts = append(parts, part)
+		node = node.getEdge(part)
+		if node == nil {
+			// no child for key segment so node does not exist
+			return false
+		}
+		p = 0
+	}
+
+	// Key was not completely consumed traversing tree, so tree does not
+	// contain anything for key.
+	if p < len(node.prefix) {
+		return false
+	}
+	var deleted bool
+	if node.leaf != nil {
+		// delete the node value, indicate that value was deleted
+		node.leaf = nil
+		deleted = true
+		tree.size--
+	}
+
+	// If node is leaf, remove from parent.  If parent becomes leaf, repeat.
+	node = node.prune(parents, parts)
+
+	// If node has become compressible, compress it
+	node.compress()
+
+	return deleted
+}
+
+// Walk visits all nodes whose keys match or are prefixed by the specified key,
+// calling walkFn for each value found.  If walkFn returns true, Walk returns.
+// Use empty key "" to visit all nodes.
+//
+// The tree is traversed in lexical order, making the output deterministic.
+//
+// Walk can be thought of as GetItemsWithPrefix(key)
+func (tree *Paths) Walk(key string, walkFn WalkFunc) {
+	pathSep := tree.PathSeparator()
+	node := &tree.root
+
+	// Traverse tree to get to node at key
+	if key != "" {
+		iter := tree.NewIterator()
+		for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
+			if !iter.Next(part) {
+				return
+			}
+		}
+		node = iter.node
+	}
+
+	// Walk down tree starting at node located at key
+	node.walk(walkFn)
+}
+
+// WalkPath walks a path in the tree from the root to the node at the given
+// key, calling walkFn for each node that has a value.  If walkFn returns true,
+// WalkPath returns.
+//
+// The tree is traversed in lexical order, making the output deterministic.
+//
+// WalkPath can be thought of as GetItemsThatArePrefixOf((key)
+func (tree *Paths) WalkPath(key string, walkFn WalkFunc) {
+	node := &tree.root
+	if node.leaf != nil && walkFn("", node.leaf.value) {
+		return
+	}
+	pathSep := tree.PathSeparator()
+	iter := tree.NewIterator()
+	for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
+		if !iter.Next(part) {
+			return
+		}
+		if value, ok := iter.Value(); ok {
+			if walkFn(iter.node.leaf.key, value) {
+				return
+			}
+		}
+	}
+}
+
+// Inspect walks every node of the tree, whether or not it holds a value,
+// calling inspectFn with information about each node.  This allows the
+// structure of the tree to be examined and detailed statistics to be
+// collected.
+//
+// If inspectFn returns false, the traversal is stopped and Inspect returns.
+//
+// The tree is traversed in lexical order, making the output deterministic.
+func (tree *Paths) Inspect(inspectFn InspectFunc) {
+	tree.root.inspect(tree.PathSeparator(), "", "", 0, inspectFn)
 }
 
 // NewIterator returns a new PathsIterator instance that begins iterating
 // from the root of the tree.
 func (tree *Paths) NewIterator() *PathsIterator {
 	return &PathsIterator{
-		node:    tree,
+		node:    &tree.root,
 		pathSep: tree.PathSeparator(),
 	}
 }
 
 // Copy makes a copy of the current iterator.  This allows branching an
 // iterator into two iterators that can take separate paths.  These iterators
-// do not affect eachother and can be iterated concurrently.
+// do not affect each other and can be iterated concurrently.
 func (it *PathsIterator) Copy() *PathsIterator {
 	return &PathsIterator{
 		p:       it.p,
@@ -130,228 +341,69 @@ func (it *PathsIterator) Value() (interface{}, bool) {
 	return it.node.leaf.value, true
 }
 
-// Get returns the value stored at the given key.  Returns false if there is no
-// value present for the key.
-func (tree *Paths) Get(key string) (interface{}, bool) {
-	pathSep := tree.PathSeparator()
-	iter := tree.NewIterator()
-	for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
-		if !iter.Next(part) {
-			return nil, false
-		}
-	}
-	return iter.Value()
-}
-
-// Put inserts the value into the tree at the given key, replacing any existing
-// items.  It returns true if it adds a new value, false if it replaces an
-// existing value.
-func (tree *Paths) Put(key string, value interface{}) bool {
-	var (
-		p          int
-		isNewValue bool
-		hasNewEdge bool
-		newEdge    pathEdge
-	)
-	node := tree
-
-	pathSep := tree.PathSeparator()
-	for part, next := pathNext(key, pathSep, 0); part != ""; part, next = pathNext(key, pathSep, next) {
-		if p < len(node.prefix) {
-			if part == node.prefix[p] {
-				p++
-				continue
-			}
-		} else if child := node.getEdge(part); child != nil {
-			node = child
-			p = 0
-			continue
-		}
-		// Descended as far as prefixes and children match key, and still
-		// have key data, so add child that has a prefix of the unmatched
-		// key data and set its value to the new value.
-		newChild := &Paths{
-			leaf: &leaf{
-				key:   key,
-				value: value,
-			},
-		}
-		childLink := part
-		if next != -1 {
-			newChild.prefix = []string{}
-			for next != -1 {
-				part, next = pathNext(key, pathSep, next)
-				newChild.prefix = append(newChild.prefix, part)
-			}
-		}
-		newEdge = pathEdge{childLink, newChild}
-		hasNewEdge = true
-		break
-	}
-	// Key has been consumed by traversing prefixes and/or children, or has
-	// been put into new child.
-
-	// If key partially matches node's prefix, then need to split node.
-	if p < len(node.prefix) {
-		node.split(p)
-		isNewValue = true
-	}
-
-	if hasNewEdge {
-		node.addEdge(newEdge)
-		isNewValue = true
-	} else {
-		// Store key at existing child
-		if node.leaf == nil {
-			isNewValue = true
-		}
-		node.leaf = &leaf{
-			key:   key,
-			value: value,
-		}
-	}
-
-	return isNewValue
-}
-
 // split splits a node such that a node:
 //     ("pre/fix/path", leaf, edges[])
 // is split into parent branching node, and a child leaf node:
 //     ("pre", nil, edges[f])--->("ix/path", leaf, edges[])
-func (tree *Paths) split(p int) {
-	split := &Paths{
-		edges:   tree.edges,
-		leaf:    tree.leaf,
-		pathSep: tree.PathSeparator(),
+func (node *pathsNode) split(p int) {
+	split := &pathsNode{
+		edges: node.edges,
+		leaf:  node.leaf,
 	}
-	if p < len(tree.prefix)-1 {
-		split.prefix = tree.prefix[p+1:]
+	if p < len(node.prefix)-1 {
+		split.prefix = node.prefix[p+1:]
 	}
-	tree.edges = nil
-	tree.addEdge(pathEdge{tree.prefix[p], split})
+	node.edges = nil
+	node.addEdge(pathEdge{node.prefix[p], split})
 	if p == 0 {
-		tree.prefix = nil
+		node.prefix = nil
 	} else {
-		tree.prefix = tree.prefix[:p]
+		node.prefix = node.prefix[:p]
 	}
-	tree.leaf = nil
+	node.leaf = nil
 }
 
-// Delete removes the value associated with the given key. Returns true if
-// there was a value stored for the key. If the node or any of its ancestors
-// becomes childless as a result, they are removed from the tree.
-func (tree *Paths) Delete(key string) bool {
-	node := tree
-	var (
-		nodes []*Paths
-		parts []string
-		p     int
-	)
-	pathSep := tree.PathSeparator()
-	for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
-		if p < len(node.prefix) {
-			if part == node.prefix[p] {
-				p++
-				continue
-			}
-			return false
-		}
-		nodes = append(nodes, node)
-		parts = append(parts, part)
-		node = node.getEdge(part)
-		if node == nil {
-			// no child for key segment so node does not exist
-			return false
-		}
-		p = 0
+func (node *pathsNode) prune(parents []*pathsNode, links []string) *pathsNode {
+	if node.edges != nil {
+		return node
 	}
-
-	// Key was not completely consumed traversing tree, so tree does not
-	// contain anything for key.
-	if p < len(node.prefix) {
-		return false
-	}
-	var deleted bool
-	if node.leaf != nil {
-		// delete the node value, indicate that value was deleted
-		node.leaf = nil
-		deleted = true
-	}
-
-	// If node is leaf, remove from parent.  If parent becomes leaf, repeat.
-	node = node.prune(nodes, parts)
-
-	// If node has become compressible, compress it
-	node.compress()
-
-	return deleted
-}
-
-func (tree *Paths) prune(parents []*Paths, links []string) *Paths {
-	if tree.edges != nil {
-		return tree
-	}
-	// iterate parents towards root of tree, removing the empty leaf
+	// iterate parents towards root of node, removing the empty leaf
 	for i := len(links) - 1; i >= 0; i-- {
-		tree = parents[i]
-		tree.delEdge(links[i])
-		if len(tree.edges) != 0 {
+		node = parents[i]
+		node.delEdge(links[i])
+		if len(node.edges) != 0 {
 			// parent has other children, stop
 			break
 		}
-		tree.edges = nil
-		if tree.leaf != nil {
+		node.edges = nil
+		if node.leaf != nil {
 			// parent has a value, stop
 			break
 		}
 	}
-	return tree
+	return node
 }
 
-func (tree *Paths) compress() {
-	if len(tree.edges) != 1 || tree.leaf != nil {
+func (node *pathsNode) compress() {
+	if len(node.edges) != 1 || node.leaf != nil {
 		return
 	}
-	for _, edge := range tree.edges {
-		pfx := make([]string, len(tree.prefix)+1+len(edge.node.prefix))
-		copy(pfx, tree.prefix)
-		pfx[len(tree.prefix)] = edge.label
-		copy(pfx[len(tree.prefix)+1:], edge.node.prefix)
-		tree.prefix = pfx
-		tree.leaf = edge.node.leaf
-		tree.edges = edge.node.edges
+	for _, edge := range node.edges {
+		pfx := make([]string, len(node.prefix)+1+len(edge.node.prefix))
+		copy(pfx, node.prefix)
+		pfx[len(node.prefix)] = edge.label
+		copy(pfx[len(node.prefix)+1:], edge.node.prefix)
+		node.prefix = pfx
+		node.leaf = edge.node.leaf
+		node.edges = edge.node.edges
 	}
 }
 
-// Walk visits all nodes whose keys match or are prefixed by the specified key,
-// calling walkFn for each value found.  If walkFn returns true, Walk returns.
-// Use empty key "" to visit all nodes.
-//
-// The tree is traversed in lexical order, making the output deterministic.
-//
-// Walk can be thought of as GetItemsWithPrefix(key)
-func (tree *Paths) Walk(key string, walkFn WalkFunc) {
-	pathSep := tree.PathSeparator()
-	// Traverse tree to get to node at key
-	if key != "" {
-		iter := tree.NewIterator()
-		for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
-			if !iter.Next(part) {
-				return
-			}
-		}
-		tree = iter.node
-	}
-
-	// Walk down tree starting at node located at key
-	tree.walk(walkFn)
-}
-
-func (tree *Paths) walk(walkFn WalkFunc) bool {
-	if tree.leaf != nil && walkFn(tree.leaf.key, tree.leaf.value) {
+func (node *pathsNode) walk(walkFn WalkFunc) bool {
+	if node.leaf != nil && walkFn(node.leaf.key, node.leaf.value) {
 		return true
 	}
-	for _, edge := range tree.edges {
+	for _, edge := range node.edges {
 		if edge.node.walk(walkFn) {
 			return true
 		}
@@ -359,46 +411,8 @@ func (tree *Paths) walk(walkFn WalkFunc) bool {
 	return false
 }
 
-// WalkPath walks a path in the tree from the root to the node at the given
-// key, calling walkFn for each node that has a value.  If walkFn returns true,
-// WalkPath returns.
-//
-// The tree is traversed in lexical order, making the output deterministic.
-//
-// WalkPath can be thought of as GetItemsThatArePrefixOf((key)
-func (tree *Paths) WalkPath(key string, walkFn WalkFunc) {
-	if tree.leaf != nil && walkFn("", tree.leaf.value) {
-		return
-	}
-	pathSep := tree.PathSeparator()
-	iter := tree.NewIterator()
-	for part, i := pathNext(key, pathSep, 0); part != ""; part, i = pathNext(key, pathSep, i) {
-		if !iter.Next(part) {
-			return
-		}
-		if value, ok := iter.Value(); ok {
-			if walkFn(iter.node.leaf.key, value) {
-				return
-			}
-		}
-	}
-}
-
-// Inspect walks every node of the tree, whether or not it holds a value,
-// calling inspectFn with information about each node.  This allows the
-// structure of the tree to be examined and detailed statistics to be
-// collected.
-//
-// If inspectFn returns false, the traversal is stopped and Inspect returns.
-//
-// The tree is traversed in lexical order, making the output deterministic.
-func (tree *Paths) Inspect(inspectFn InspectFunc) {
-	tree.inspect("", "", 0, inspectFn)
-}
-
-func (tree *Paths) inspect(link, key string, depth int, inspectFn InspectFunc) bool {
-	pathSep := tree.PathSeparator()
-	pfx := strings.Join(tree.prefix, pathSep)
+func (node *pathsNode) inspect(pathSep, link, key string, depth int, inspectFn InspectFunc) bool {
+	pfx := strings.Join(node.prefix, pathSep)
 	var keyParts []string
 	if key != "" {
 		keyParts = append(keyParts, key)
@@ -411,18 +425,54 @@ func (tree *Paths) inspect(link, key string, depth int, inspectFn InspectFunc) b
 	}
 	key = strings.Join(keyParts, pathSep)
 	var val interface{}
-	if tree.leaf != nil {
-		val = tree.leaf.value
+	if node.leaf != nil {
+		val = node.leaf.value
 	}
-	if inspectFn(link, pfx, key, depth, len(tree.edges), val) {
+	if inspectFn(link, pfx, key, depth, len(node.edges), val) {
 		return true
 	}
-	for _, edge := range tree.edges {
-		if edge.node.inspect(edge.label, key, depth+1, inspectFn) {
+	for _, edge := range node.edges {
+		if edge.node.inspect(pathSep, edge.label, key, depth+1, inspectFn) {
 			return true
 		}
 	}
 	return false
+}
+
+// getEdge binary searches for edge
+func (node *pathsNode) getEdge(radix string) *pathsNode {
+	count := len(node.edges)
+	idx := sort.Search(count, func(i int) bool {
+		return node.edges[i].label >= radix
+	})
+	if idx < count && node.edges[idx].label == radix {
+		return node.edges[idx].node
+	}
+	return nil
+}
+
+// addEdge binary searches to find where to insert edge, and inserts at
+func (node *pathsNode) addEdge(e pathEdge) {
+	count := len(node.edges)
+	idx := sort.Search(count, func(i int) bool {
+		return node.edges[i].label >= e.label
+	})
+	node.edges = append(node.edges, pathEdge{})
+	copy(node.edges[idx+1:], node.edges[idx:])
+	node.edges[idx] = e
+}
+
+// delEdge binary searches for edge and removes it
+func (node *pathsNode) delEdge(radix string) {
+	count := len(node.edges)
+	idx := sort.Search(count, func(i int) bool {
+		return node.edges[i].label >= radix
+	})
+	if idx < count && node.edges[idx].label == radix {
+		copy(node.edges[idx:], node.edges[idx+1:])
+		node.edges[len(node.edges)-1] = pathEdge{}
+		node.edges = node.edges[:len(node.edges)-1]
+	}
 }
 
 // pathNext splits path strings by a path separator character. For
@@ -459,40 +509,4 @@ func pathNext(path, pathSep string, start int) (string, int) {
 	}
 
 	return path[start:end], next
-}
-
-// getEdge binary searchs for edge
-func (tree *Paths) getEdge(radix string) *Paths {
-	count := len(tree.edges)
-	idx := sort.Search(count, func(i int) bool {
-		return tree.edges[i].label >= radix
-	})
-	if idx < count && tree.edges[idx].label == radix {
-		return tree.edges[idx].node
-	}
-	return nil
-}
-
-// addEdge binary searchs to find where to insert edge, and inserts at
-func (tree *Paths) addEdge(e pathEdge) {
-	count := len(tree.edges)
-	idx := sort.Search(count, func(i int) bool {
-		return tree.edges[i].label >= e.label
-	})
-	tree.edges = append(tree.edges, pathEdge{})
-	copy(tree.edges[idx+1:], tree.edges[idx:])
-	tree.edges[idx] = e
-}
-
-// delEdge binary searches for edge and removes it
-func (tree *Paths) delEdge(radix string) {
-	count := len(tree.edges)
-	idx := sort.Search(count, func(i int) bool {
-		return tree.edges[i].label >= radix
-	})
-	if idx < count && tree.edges[idx].label == radix {
-		copy(tree.edges[idx:], tree.edges[idx+1:])
-		tree.edges[len(tree.edges)-1] = pathEdge{}
-		tree.edges = tree.edges[:len(tree.edges)-1]
-	}
 }

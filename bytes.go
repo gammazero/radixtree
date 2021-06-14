@@ -7,6 +7,11 @@ import (
 
 // Bytes is a radix tree of bytes with string keys and interface{} values.
 type Bytes struct {
+	root bytesNode
+	size int
+}
+
+type bytesNode struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
 	prefix string
@@ -14,6 +19,7 @@ type Bytes struct {
 	leaf   *leaf
 }
 
+// New creates a new bytes-based radix tree
 func New() *Bytes {
 	return new(Bytes)
 }
@@ -25,7 +31,7 @@ type leaf struct {
 
 type byteEdge struct {
 	radix byte
-	node  *Bytes
+	node  *bytesNode
 }
 
 // byteEdges implements sort.Interface
@@ -41,20 +47,242 @@ func (e byteEdges) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
 // Any modification to the tree invalidates the iterator.
 type BytesIterator struct {
 	p    int
-	node *Bytes
+	node *bytesNode
+}
+
+// Len returns the number of values stored in the tree.
+func (tree *Bytes) Len() int {
+	return tree.size
+}
+
+// Get returns the value stored at the given key.  Returns false if there is no
+// value present for the key.
+func (tree *Bytes) Get(key string) (interface{}, bool) {
+	node := &tree.root
+	for {
+		// All key data consumed and matched against node prefix, so this is
+		// the requested or an intermediate node.
+		if len(key) == 0 {
+			if node.leaf != nil {
+				return node.leaf.value, true
+			}
+			break
+		}
+
+		// Find edge for radix
+		node = node.getEdge(key[0])
+		if node == nil {
+			break
+		}
+
+		// Consume key data
+		if !strings.HasPrefix(key[1:], node.prefix) {
+			break
+		}
+		key = key[len(node.prefix)+1:]
+	}
+	return nil, false
+}
+
+// Put inserts the value into the tree at the given key, replacing any existing
+// items.  It returns true if it adds a new value, false if it replaces an
+// existing value.
+func (tree *Bytes) Put(key string, value interface{}) bool {
+	var (
+		p          int
+		isNewValue bool
+		newEdge    byteEdge
+		hasNewEdge bool
+	)
+	node := &tree.root
+
+	for i := 0; i < len(key); i++ {
+		radix := key[i]
+		if p < len(node.prefix) {
+			if radix == node.prefix[p] {
+				p++
+				continue
+			}
+		} else if child := node.getEdge(radix); child != nil {
+			node = child
+			p = 0
+			continue
+		}
+		// Descended as far as prefixes and edges match key, and still
+		// have key data, so add child that has a prefix of the unmatched
+		// key data and set its value to the new value.
+		newChild := &bytesNode{
+			leaf: &leaf{
+				key:   key,
+				value: value,
+			},
+		}
+		if i < len(key)-1 {
+			newChild.prefix = string(key[i+1:])
+		}
+		newEdge = byteEdge{radix, newChild}
+		hasNewEdge = true
+		break
+	}
+	// Key has been consumed by traversing prefixes and/or edges, or has
+	// been put into new child.
+
+	// If key partially matches node's prefix, then need to split node.
+	if p < len(node.prefix) {
+		node.split(p)
+		isNewValue = true
+	}
+
+	if hasNewEdge {
+		node.addEdge(newEdge)
+		isNewValue = true
+		tree.size++
+	} else {
+		// Store key at existing child
+		if node.leaf == nil {
+			isNewValue = true
+			tree.size++
+		}
+		node.leaf = &leaf{
+			key:   key,
+			value: value,
+		}
+	}
+
+	return isNewValue
+}
+
+// Delete removes the value associated with the given key. Returns true if
+// there was a value stored for the key. If the node or any of its ancestors
+// becomes childless as a result, they are removed from the tree.
+func (tree *Bytes) Delete(key string) bool {
+	node := &tree.root
+	var (
+		parents []*bytesNode
+		links   []byte
+		p       int
+	)
+	for i := 0; i < len(key); i++ {
+		radix := key[i]
+		if p < len(node.prefix) {
+			if radix == node.prefix[p] {
+				p++
+				continue
+			}
+			return false
+		}
+		parents = append(parents, node)
+		links = append(links, radix)
+		node = node.getEdge(radix)
+		if node == nil {
+			// node does not exist
+			return false
+		}
+		p = 0
+	}
+
+	// Key was not completely consumed traversing tree, so tree does not
+	// contain anything for key.
+	if p < len(node.prefix) {
+		return false
+	}
+	var deleted bool
+	if node.leaf != nil {
+		// delete the node value, indicate that value was deleted
+		node.leaf = nil
+		deleted = true
+		tree.size--
+	}
+
+	// If node is leaf, remove from parent. If parent becomes leaf, repeat.
+	node = node.prune(parents, links)
+
+	// If node has become compressible, compress it
+	node.compress()
+
+	return deleted
+}
+
+// Walk visits all nodes whose keys match or are prefixed by the specified key,
+// calling walkFn for each value found.  If walkFn returns true, Walk returns.
+// Use empty key "" to visit all nodes.
+//
+// The tree is traversed in lexical order, making the output deterministic.
+//
+// Walk can be thought of as GetItemsWithPrefix(key)
+func (tree *Bytes) Walk(key string, walkFn WalkFunc) {
+	node := &tree.root
+	for len(key) != 0 {
+		if node = node.getEdge(key[0]); node == nil {
+			return
+		}
+
+		// Consume key data
+		if !strings.HasPrefix(key[1:], node.prefix) {
+			if strings.HasPrefix(node.prefix, key[1:]) {
+				break
+			}
+			return
+		}
+		key = key[len(node.prefix)+1:]
+	}
+
+	// Walk down tree starting at node located at key
+	node.walk(walkFn)
+}
+
+// WalkPath walks a path in the tree from the root to the node at the given
+// key, calling walkFn for each node that has a value.  If walkFn returns true,
+// WalkPath returns.
+//
+// The tree is traversed in lexical order, making the output deterministic.
+//
+// WalkPath can be thought of as GetItemsThatArePrefixOf((key)
+func (tree *Bytes) WalkPath(key string, walkFn WalkFunc) {
+	node := &tree.root
+	for {
+		if node.leaf != nil && walkFn(node.leaf.key, node.leaf.value) {
+			return
+		}
+
+		if len(key) == 0 {
+			return
+		}
+
+		if node = node.getEdge(key[0]); node == nil {
+			return
+		}
+
+		if !strings.HasPrefix(key[1:], node.prefix) {
+			return
+		}
+		key = key[len(node.prefix)+1:]
+	}
+}
+
+// Inspect walks every node of the tree, whether or not it holds a value,
+// calling inspectFn with information about each node.  This allows the
+// structure of the tree to be examined and detailed statistics to be
+// collected.
+//
+// If inspectFn returns false, the traversal is stopped and Inspect returns.
+//
+// The tree is traversed in lexical order, making the output deterministic.
+func (tree *Bytes) Inspect(inspectFn InspectFunc) {
+	tree.root.inspect("", "", 0, inspectFn)
 }
 
 // NewIterator returns a new BytesIterator instance that begins iterating from
 // the root of the tree.
 func (tree *Bytes) NewIterator() *BytesIterator {
 	return &BytesIterator{
-		node: tree,
+		node: &tree.root,
 	}
 }
 
 // Copy makes a copy of the current iterator.  This allows branching an
 // iterator into two iterators that can take separate paths.  These iterators
-// do not affect eachother and can be iterated concurrently.
+// do not affect each other and can be iterated concurrently.
 func (it *BytesIterator) Copy() *BytesIterator {
 	return &BytesIterator{
 		p:    it.p,
@@ -107,240 +335,69 @@ func (it *BytesIterator) Value() (interface{}, bool) {
 	return it.node.leaf.value, true
 }
 
-// Get returns the value stored at the given key.  Returns false if there is no
-// value present for the key.
-func (tree *Bytes) Get(key string) (interface{}, bool) {
-	for {
-		// All key data consumed and matched against node prefix, so this is
-		// the requested or an intermediate node.
-		if len(key) == 0 {
-			if tree.leaf != nil {
-				return tree.leaf.value, true
-			}
-			break
-		}
-
-		// Find edge for radix
-		tree = tree.getEdge(key[0])
-		if tree == nil {
-			break
-		}
-
-		// Consume key data
-		if !strings.HasPrefix(key[1:], tree.prefix) {
-			break
-		}
-		key = key[len(tree.prefix)+1:]
-	}
-	return nil, false
-}
-
-// Put inserts the value into the tree at the given key, replacing any existing
-// items.  It returns true if it adds a new value, false if it replaces an
-// existing value.
-func (tree *Bytes) Put(key string, value interface{}) bool {
-	var (
-		p          int
-		isNewValue bool
-		newEdge    byteEdge
-		hasNewEdge bool
-	)
-	node := tree
-
-	for i := 0; i < len(key); i++ {
-		radix := key[i]
-		if p < len(node.prefix) {
-			if radix == node.prefix[p] {
-				p++
-				continue
-			}
-		} else if child := node.getEdge(radix); child != nil {
-			node = child
-			p = 0
-			continue
-		}
-		// Descended as far as prefixes and edges match key, and still
-		// have key data, so add child that has a prefix of the unmatched
-		// key data and set its value to the new value.
-		newChild := &Bytes{
-			leaf: &leaf{
-				key:   key,
-				value: value,
-			},
-		}
-		if i < len(key)-1 {
-			newChild.prefix = string(key[i+1:])
-		}
-		newEdge = byteEdge{radix, newChild}
-		hasNewEdge = true
-		break
-	}
-	// Key has been consumed by traversing prefixes and/or edges, or has
-	// been put into new child.
-
-	// If key partially matches node's prefix, then need to split node.
-	if p < len(node.prefix) {
-		node.split(p)
-		isNewValue = true
-	}
-
-	if hasNewEdge {
-		node.addEdge(newEdge)
-		isNewValue = true
-	} else {
-		// Store key at existing child
-		if node.leaf == nil {
-			isNewValue = true
-		}
-		node.leaf = &leaf{
-			key:   key,
-			value: value,
-		}
-	}
-
-	return isNewValue
-}
-
 // split splits a node such that a node:
 //     ("prefix", leaf, edges[])
 // is split into parent branching node, and a child leaf node:
 //     ("pre", nil, edges[f])--->("ix", leaf, edges[])
-func (tree *Bytes) split(p int) {
-	split := &Bytes{
-		edges: tree.edges,
-		leaf:  tree.leaf,
+func (node *bytesNode) split(p int) {
+	split := &bytesNode{
+		edges: node.edges,
+		leaf:  node.leaf,
 	}
-	if p < len(tree.prefix)-1 {
-		split.prefix = tree.prefix[p+1:]
+	if p < len(node.prefix)-1 {
+		split.prefix = node.prefix[p+1:]
 	}
-	tree.edges = nil
-	tree.addEdge(byteEdge{tree.prefix[p], split})
+	node.edges = nil
+	node.addEdge(byteEdge{node.prefix[p], split})
 	if p == 0 {
-		tree.prefix = ""
+		node.prefix = ""
 	} else {
-		tree.prefix = tree.prefix[:p]
+		node.prefix = node.prefix[:p]
 	}
-	tree.leaf = nil
+	node.leaf = nil
 }
 
-// Delete removes the value associated with the given key. Returns true if
-// there was a value stored for the key. If the node or any of its ancestors
-// becomes childless as a result, they are removed from the tree.
-func (tree *Bytes) Delete(key string) bool {
-	node := tree
-	var (
-		nodes []*Bytes
-		links []byte
-		p     int
-	)
-	for i := 0; i < len(key); i++ {
-		radix := key[i]
-		if p < len(node.prefix) {
-			if radix == node.prefix[p] {
-				p++
-				continue
-			}
-			return false
-		}
-		nodes = append(nodes, node)
-		links = append(links, radix)
-		node = node.getEdge(radix)
-		if node == nil {
-			// node does not exist
-			return false
-		}
-		p = 0
-	}
-
-	// Key was not completely consumed traversing tree, so tree does not
-	// contain anything for key.
-	if p < len(node.prefix) {
-		return false
-	}
-	var deleted bool
-	if node.leaf != nil {
-		// delete the node value, indicate that value was deleted
-		node.leaf = nil
-		deleted = true
-	}
-
-	// If node is leaf, remove from parent. If parent becomes leaf, repeat.
-	node = node.prune(nodes, links)
-
-	// If node has become compressible, compress it
-	node.compress()
-
-	return deleted
-}
-
-func (tree *Bytes) prune(parents []*Bytes, links []byte) *Bytes {
-	if tree.edges != nil {
-		return tree
+func (node *bytesNode) prune(parents []*bytesNode, links []byte) *bytesNode {
+	if node.edges != nil {
+		return node
 	}
 	// iterate parents towards root of tree, removing the empty leaf
 	for i := len(links) - 1; i >= 0; i-- {
-		tree = parents[i]
-		tree.delEdge(links[i])
-		if len(tree.edges) != 0 {
+		node = parents[i]
+		node.delEdge(links[i])
+		if len(node.edges) != 0 {
 			// parent has other edges, stop
 			break
 		}
-		tree.edges = nil
-		if tree.leaf != nil {
+		node.edges = nil
+		if node.leaf != nil {
 			// parent has a value, stop
 			break
 		}
 	}
-	return tree
+	return node
 }
 
-func (tree *Bytes) compress() {
-	if len(tree.edges) != 1 || tree.leaf != nil {
+func (node *bytesNode) compress() {
+	if len(node.edges) != 1 || node.leaf != nil {
 		return
 	}
-	for _, edge := range tree.edges {
-		pfx := make([]byte, len(tree.prefix)+1+len(edge.node.prefix))
-		copy(pfx, tree.prefix)
-		pfx[len(tree.prefix)] = edge.radix
-		copy(pfx[len(tree.prefix)+1:], edge.node.prefix)
-		tree.prefix = string(pfx)
-		tree.leaf = edge.node.leaf
-		tree.edges = edge.node.edges
+	for _, edge := range node.edges {
+		pfx := make([]byte, len(node.prefix)+1+len(edge.node.prefix))
+		copy(pfx, node.prefix)
+		pfx[len(node.prefix)] = edge.radix
+		copy(pfx[len(node.prefix)+1:], edge.node.prefix)
+		node.prefix = string(pfx)
+		node.leaf = edge.node.leaf
+		node.edges = edge.node.edges
 	}
 }
 
-// Walk visits all nodes whose keys match or are prefixed by the specified key,
-// calling walkFn for each value found.  If walkFn returns true, Walk returns.
-// Use empty key "" to visit all nodes.
-//
-// The tree is traversed in lexical order, making the output deterministic.
-//
-// Walk can be thought of as GetItemsWithPrefix(key)
-func (tree *Bytes) Walk(key string, walkFn WalkFunc) {
-	for len(key) != 0 {
-		if tree = tree.getEdge(key[0]); tree == nil {
-			return
-		}
-
-		// Consume key data
-		if !strings.HasPrefix(key[1:], tree.prefix) {
-			if strings.HasPrefix(tree.prefix, key[1:]) {
-				break
-			}
-			return
-		}
-		key = key[len(tree.prefix)+1:]
-	}
-
-	// Walk down tree starting at node located at key
-	tree.walk(walkFn)
-}
-
-func (tree *Bytes) walk(walkFn WalkFunc) bool {
-	if tree.leaf != nil && walkFn(tree.leaf.key, tree.leaf.value) {
+func (node *bytesNode) walk(walkFn WalkFunc) bool {
+	if node.leaf != nil && walkFn(node.leaf.key, node.leaf.value) {
 		return true
 	}
-	for _, edge := range tree.edges {
+	for _, edge := range node.edges {
 		if edge.node.walk(walkFn) {
 			return true
 		}
@@ -348,56 +405,16 @@ func (tree *Bytes) walk(walkFn WalkFunc) bool {
 	return false
 }
 
-// WalkPath walks a path in the tree from the root to the node at the given
-// key, calling walkFn for each node that has a value.  If walkFn returns true,
-// WalkPath returns.
-//
-// The tree is traversed in lexical order, making the output deterministic.
-//
-// WalkPath can be thought of as GetItemsThatArePrefixOf((key)
-func (tree *Bytes) WalkPath(key string, walkFn WalkFunc) {
-	for {
-		if tree.leaf != nil && walkFn(tree.leaf.key, tree.leaf.value) {
-			return
-		}
-
-		if len(key) == 0 {
-			return
-		}
-
-		if tree = tree.getEdge(key[0]); tree == nil {
-			return
-		}
-
-		if !strings.HasPrefix(key[1:], tree.prefix) {
-			return
-		}
-		key = key[len(tree.prefix)+1:]
-	}
-}
-
-// Inspect walks every node of the tree, whether or not it holds a value,
-// calling inspectFn with information about each node.  This allows the
-// structure of the tree to be examined and detailed statistics to be
-// collected.
-//
-// If inspectFn returns false, the traversal is stopped and Inspect returns.
-//
-// The tree is traversed in lexical order, making the output deterministic.
-func (tree *Bytes) Inspect(inspectFn InspectFunc) {
-	tree.inspect("", "", 0, inspectFn)
-}
-
-func (tree *Bytes) inspect(link, key string, depth int, inspectFn InspectFunc) bool {
-	key += link + tree.prefix
+func (node *bytesNode) inspect(link, key string, depth int, inspectFn InspectFunc) bool {
+	key += link + node.prefix
 	var val interface{}
-	if tree.leaf != nil {
-		val = tree.leaf.value
+	if node.leaf != nil {
+		val = node.leaf.value
 	}
-	if inspectFn(link, tree.prefix, key, depth, len(tree.edges), val) {
+	if inspectFn(link, node.prefix, key, depth, len(node.edges), val) {
 		return true
 	}
-	for _, edge := range tree.edges {
+	for _, edge := range node.edges {
 		if edge.node.inspect(string(edge.radix), key, depth+1, inspectFn) {
 			return true
 		}
@@ -405,38 +422,38 @@ func (tree *Bytes) inspect(link, key string, depth int, inspectFn InspectFunc) b
 	return false
 }
 
-// getEdge binary searchs for edge
-func (tree *Bytes) getEdge(radix byte) *Bytes {
-	count := len(tree.edges)
+// getEdge binary searches for edge
+func (node *bytesNode) getEdge(radix byte) *bytesNode {
+	count := len(node.edges)
 	idx := sort.Search(count, func(i int) bool {
-		return tree.edges[i].radix >= radix
+		return node.edges[i].radix >= radix
 	})
-	if idx < count && tree.edges[idx].radix == radix {
-		return tree.edges[idx].node
+	if idx < count && node.edges[idx].radix == radix {
+		return node.edges[idx].node
 	}
 	return nil
 }
 
-// addEdge binary searchs to find where to insert edge, and inserts at
-func (tree *Bytes) addEdge(e byteEdge) {
-	count := len(tree.edges)
+// addEdge binary searches to find where to insert edge, and inserts at
+func (node *bytesNode) addEdge(e byteEdge) {
+	count := len(node.edges)
 	idx := sort.Search(count, func(i int) bool {
-		return tree.edges[i].radix >= e.radix
+		return node.edges[i].radix >= e.radix
 	})
-	tree.edges = append(tree.edges, byteEdge{})
-	copy(tree.edges[idx+1:], tree.edges[idx:])
-	tree.edges[idx] = e
+	node.edges = append(node.edges, byteEdge{})
+	copy(node.edges[idx+1:], node.edges[idx:])
+	node.edges[idx] = e
 }
 
 // delEdge binary searches for edge and removes it
-func (tree *Bytes) delEdge(radix byte) {
-	count := len(tree.edges)
+func (node *bytesNode) delEdge(radix byte) {
+	count := len(node.edges)
 	idx := sort.Search(count, func(i int) bool {
-		return tree.edges[i].radix >= radix
+		return node.edges[i].radix >= radix
 	})
-	if idx < count && tree.edges[idx].radix == radix {
-		copy(tree.edges[idx:], tree.edges[idx+1:])
-		tree.edges[len(tree.edges)-1] = byteEdge{}
-		tree.edges = tree.edges[:len(tree.edges)-1]
+	if idx < count && node.edges[idx].radix == radix {
+		copy(node.edges[idx:], node.edges[idx+1:])
+		node.edges[len(node.edges)-1] = byteEdge{}
+		node.edges = node.edges[:len(node.edges)-1]
 	}
 }
