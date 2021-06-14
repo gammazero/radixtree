@@ -5,12 +5,12 @@ import (
 )
 
 func TestBytesAddEnd(t *testing.T) {
-	rt := New()
+	rt := new(Bytes)
 	rt.Put("tomato", "TOMATO")
-	if len(rt.edges) != 1 {
+	if len(rt.root.edges) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node := rt.getEdge('t')
+	node := rt.root.getEdge('t')
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -32,10 +32,10 @@ func TestBytesAddEnd(t *testing.T) {
 	//      (root) t-> ("om", TOM) a-> ("to", TOMATO)
 	//
 	rt.Put("tom", "TOM")
-	if len(rt.edges) != 1 {
+	if len(rt.root.edges) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node = rt.getEdge('t')
+	node = rt.root.getEdge('t')
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -71,7 +71,7 @@ func TestBytesAddEnd(t *testing.T) {
 }
 
 func TestBytesAddFront(t *testing.T) {
-	rt := New()
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	t.Log(dump(rt))
 	// (root) t-> ("om", TOM)
@@ -80,10 +80,10 @@ func TestBytesAddFront(t *testing.T) {
 	t.Log("... add \"tomato\" TOMATO ...")
 	rt.Put("tomato", "TOMATO")
 	t.Log(dump(rt))
-	if len(rt.edges) != 1 {
+	if len(rt.root.edges) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node := rt.getEdge('t')
+	node := rt.root.getEdge('t')
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -118,7 +118,7 @@ func TestBytesAddFront(t *testing.T) {
 }
 
 func TestBytesAddBranch(t *testing.T) {
-	rt := New()
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 
@@ -130,10 +130,10 @@ func TestBytesAddBranch(t *testing.T) {
 	t.Log("... add \"torn\", TORN ...")
 	rt.Put("torn", "TORN")
 	t.Log(dump(rt))
-	if len(rt.edges) != 1 {
+	if len(rt.root.edges) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node := rt.getEdge('t')
+	node := rt.root.getEdge('t')
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -197,7 +197,7 @@ func TestBytesAddBranch(t *testing.T) {
 }
 
 func TestBytesAddBranchToBranch(t *testing.T) {
-	rt := New()
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -211,10 +211,10 @@ func TestBytesAddBranchToBranch(t *testing.T) {
 	t.Log("... add \"tag\", TAG ...")
 	rt.Put("tag", "TAG")
 	t.Log(dump(rt))
-	if len(rt.edges) != 1 {
+	if len(rt.root.edges) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node := rt.getEdge('t')
+	node := rt.root.getEdge('t')
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -253,7 +253,7 @@ func TestBytesAddBranchToBranch(t *testing.T) {
 }
 
 func TestBytesAddExisting(t *testing.T) {
-	rt := New()
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -269,10 +269,10 @@ func TestBytesAddExisting(t *testing.T) {
 	t.Log("... add \"to\", TO ...")
 	rt.Put("to", "TO")
 	t.Log(dump(rt))
-	if len(rt.edges) != 1 {
+	if len(rt.root.edges) != 1 {
 		t.Fatal("root should have 1 child")
 	}
-	node := rt.getEdge('t')
+	node := rt.root.getEdge('t')
 	if node == nil {
 		t.Fatal("root should have child at 't'")
 	}
@@ -315,7 +315,7 @@ func TestBytesAddExisting(t *testing.T) {
 }
 
 func TestBytesDelete(t *testing.T) {
-	rt := New()
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -326,7 +326,7 @@ func TestBytesDelete(t *testing.T) {
 	if !rt.Delete("torn") {
 		t.Error("did not delete \"torn\"")
 	}
-	node := rt.getEdge('t')
+	node := rt.root.getEdge('t')
 	node = node.getEdge('o')
 	if node.getEdge('r') != nil {
 		t.Error("deleted leaf should have been pruned")
@@ -336,7 +336,7 @@ func TestBytesDelete(t *testing.T) {
 	if !rt.Delete("tom") {
 		t.Error("did not delete \"tom\"")
 	}
-	node = rt.getEdge('t')
+	node = rt.root.getEdge('t')
 	node = node.getEdge('o')
 	node = node.getEdge('m')
 	if node.leaf == nil && len(node.edges) == 1 {
@@ -355,7 +355,7 @@ func TestBytesDelete(t *testing.T) {
 }
 
 func TestBytesBuildEdgeCases(t *testing.T) {
-	tree := New()
+	tree := new(Bytes)
 
 	tree.Put("ABCD", 1)
 	t.Log(dump(tree))
@@ -390,10 +390,10 @@ func TestBytesBuildEdgeCases(t *testing.T) {
 	// (root) /-> ("L1/L2", 1)
 	tree.Put("/L1/L2", 1)
 	t.Log(dump(tree))
-	if len(tree.edges) != 1 {
-		t.Fatal("expected 1 child, got ", len(tree.edges))
+	if len(tree.root.edges) != 1 {
+		t.Fatal("expected 1 child, got ", len(tree.root.edges))
 	}
-	node := tree.getEdge('/')
+	node := tree.root.getEdge('/')
 	if node == nil {
 		t.Fatal("expected child at '/'")
 	}
@@ -409,7 +409,7 @@ func TestBytesBuildEdgeCases(t *testing.T) {
 	// (root) /-> ("L1/L2", 1) /-> ("L3", 555)
 	tree.Put("/L1/L2/L3", 555)
 	t.Log(dump(tree))
-	node = tree.getEdge('/')
+	node = tree.root.getEdge('/')
 	if node == nil {
 		t.Fatal("expected child at '/'")
 	}
@@ -432,7 +432,7 @@ func TestBytesBuildEdgeCases(t *testing.T) {
 	// (root) /-> ("L1/L2", 1) /-> ("L3", 555) /-> ("L4", 999)
 	tree.Put("/L1/L2/L3/L4", 999)
 	t.Log(dump(tree))
-	node = tree.getEdge('/')
+	node = tree.root.getEdge('/')
 	if node == nil {
 		t.Fatal("expected child at '/'")
 	}
@@ -466,7 +466,7 @@ func TestBytesBuildEdgeCases(t *testing.T) {
 	//                                      /-> ("C", 3)
 	tree.Put("/L1/L2/L/C", 3)
 	t.Log(dump(tree))
-	node = tree.getEdge('/')
+	node = tree.root.getEdge('/')
 	if node == nil {
 		t.Fatal("expected child at '/'")
 	}
@@ -494,7 +494,7 @@ func TestBytesBuildEdgeCases(t *testing.T) {
 }
 
 func TestBytesCopyIterator(t *testing.T) {
-	rt := New()
+	rt := new(Bytes)
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")

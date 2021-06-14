@@ -8,13 +8,13 @@ import (
 func TestPathsAddEnd(t *testing.T) {
 	// add "/L1/L2", 1
 	// (root) /L1-> ("/L2", 1)
-	tree := NewPaths("/")
+	tree := new(Paths)
 	tree.Put("/L1/L2", 1)
 	t.Log(dump(tree))
-	if len(tree.edges) != 1 {
+	if len(tree.root.edges) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.getEdge("L1")
+	node := tree.root.getEdge("L1")
 	if node == nil {
 		t.Fatal("expected child at 'L1'")
 	}
@@ -36,10 +36,10 @@ func TestPathsAddEnd(t *testing.T) {
 	// (root) /L1-> ("/L2", 1) /L3A-> ("", 2)
 	tree.Put("/L1/L2/L3A", 2)
 	t.Log(dump(tree))
-	if len(tree.edges) != 1 {
+	if len(tree.root.edges) != 1 {
 		t.Fatal("expected one child")
 	}
-	node = tree.getEdge("L1")
+	node = tree.root.getEdge("L1")
 	if node == nil {
 		t.Fatal("expected child at 'L1'")
 	}
@@ -84,10 +84,10 @@ func TestPathsAddBranch(t *testing.T) {
 	//                         .L3B-> (".L4", 3)
 	tree.Put(".L1.L2.L3B.L4", 3)
 	t.Log(dump(tree))
-	if len(tree.edges) != 1 {
+	if len(tree.root.edges) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.getEdge("L1")
+	node := tree.root.getEdge("L1")
 	if node == nil {
 		t.Fatal("expected child at 'L1'")
 	}
@@ -128,10 +128,10 @@ func TestPathsAddBranchToBranch(t *testing.T) {
 	//                      /L2B-> ("L3C", 4)
 	tree.Put("/L1/L2B/L3C", 4)
 	t.Log(dump(tree))
-	if len(tree.edges) != 1 {
+	if len(tree.root.edges) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.getEdge("L1")
+	node := tree.root.getEdge("L1")
 	if node == nil {
 		t.Fatal("expected child at 'L1'")
 	}
@@ -193,10 +193,10 @@ func TestPathsAddExisting(t *testing.T) {
 	//                      /L2B-> ("L3C", 4)
 	tree.Put("/L1", 5)
 	t.Log(dump(tree))
-	if len(tree.edges) != 1 {
+	if len(tree.root.edges) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.getEdge("L1")
+	node := tree.root.getEdge("L1")
 	if node == nil {
 		t.Fatal("expected child at 'L1'")
 	}
@@ -233,10 +233,10 @@ func TestPathsDelete(t *testing.T) {
 	//                      /L2B-> ("L3C", 4)
 	tree.Delete("/L1/L2")
 	t.Log(dump(tree))
-	if len(tree.edges) != 1 {
+	if len(tree.root.edges) != 1 {
 		t.Fatal("expected one child")
 	}
-	node := tree.getEdge("L1")
+	node := tree.root.getEdge("L1")
 	if node == nil {
 		t.Fatal("expected child at 'L1'")
 	}
@@ -267,10 +267,10 @@ func TestPathsDelete(t *testing.T) {
 		t.Fatal("should have deleted key")
 	}
 	t.Log(dump(tree))
-	if len(tree.edges) != 1 {
+	if len(tree.root.edges) != 1 {
 		t.Fatal("expected one child")
 	}
-	node = tree.getEdge("L1")
+	node = tree.root.getEdge("L1")
 	if node == nil {
 		t.Fatal("expected child at 'L1'")
 	}
@@ -302,7 +302,7 @@ func TestPathsDelete(t *testing.T) {
 	if !tree.Delete("/L1/L2B/L3C") {
 		t.Error("did not delete \"/L1/L2B/L3C\"")
 	}
-	node = tree.getEdge("L1")
+	node = tree.root.getEdge("L1")
 	if node.getEdge("L2B") != nil {
 		t.Log(dump(tree))
 		t.Error("deleted leaf should have been pruned")
@@ -315,7 +315,7 @@ func TestPathsDelete(t *testing.T) {
 	if !tree.Delete("L1") {
 		t.Error("did not delete \"/L1/L2B/L3C\"")
 	}
-	node = tree.getEdge("L1")
+	node = tree.root.getEdge("L1")
 	if node == nil {
 		t.Fatal("expected node at \"L1\"")
 	}
@@ -333,7 +333,7 @@ func TestPathsDelete(t *testing.T) {
 	if !tree.Delete("/L1/L2/L3A/L4") {
 		t.Error("did not delete \"/L1/L2/L3A/L4\"")
 	}
-	node = tree.getEdge("L1")
+	node = tree.root.getEdge("L1")
 	if node == nil {
 		t.Fatal("expected node at \"L1\"")
 	}
