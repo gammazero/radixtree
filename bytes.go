@@ -282,7 +282,7 @@ func (tree *Bytes) NewIterator() *BytesIterator {
 
 // Copy makes a copy of the current iterator.  This allows branching an
 // iterator into two iterators that can take separate paths.  These iterators
-// do not affect eachother and can be iterated concurrently.
+// do not affect each other and can be iterated concurrently.
 func (it *BytesIterator) Copy() *BytesIterator {
 	return &BytesIterator{
 		p:    it.p,
@@ -422,7 +422,7 @@ func (node *bytesNode) inspect(link, key string, depth int, inspectFn InspectFun
 	return false
 }
 
-// getEdge binary searchs for edge
+// getEdge binary searches for edge
 func (node *bytesNode) getEdge(radix byte) *bytesNode {
 	count := len(node.edges)
 	idx := sort.Search(count, func(i int) bool {
@@ -434,7 +434,7 @@ func (node *bytesNode) getEdge(radix byte) *bytesNode {
 	return nil
 }
 
-// addEdge binary searchs to find where to insert edge, and inserts at
+// addEdge binary searches to find where to insert edge, and inserts at
 func (node *bytesNode) addEdge(e byteEdge) {
 	count := len(node.edges)
 	idx := sort.Search(count, func(i int) bool {

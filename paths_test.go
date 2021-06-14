@@ -321,7 +321,7 @@ func TestPathsDelete(t *testing.T) {
 	}
 	if strings.Join(node.prefix, "/") != "L2/L3A" {
 		t.Log(dump(tree))
-		t.Error("worng prefix for compresses node:", strings.Join(node.prefix, ""))
+		t.Error("wrong prefix for compresses node:", strings.Join(node.prefix, ""))
 	}
 
 	tree.Put("/L1/L2/L3A/L4", 6)
@@ -339,7 +339,7 @@ func TestPathsDelete(t *testing.T) {
 	}
 	if strings.Join(node.prefix, "/") != "L2/L3A" {
 		t.Log(dump(tree))
-		t.Error("worng prefix for compresses node:", strings.Join(node.prefix, ""))
+		t.Error("wrong prefix for compresses node:", strings.Join(node.prefix, ""))
 	}
 	if len(node.edges) != 0 {
 		t.Log(dump(tree))

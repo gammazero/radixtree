@@ -57,7 +57,7 @@ func testRadixTree(t *testing.T, tree rtree) {
 	}
 
 	if tree.Len() != len(keys) {
-		t.Fatalf("wrong lenght, expected %d, got %d", len(keys), tree.Len())
+		t.Fatalf("wrong length, expected %d, got %d", len(keys), tree.Len())
 	}
 
 	// put again, same keys new values
@@ -68,7 +68,7 @@ func testRadixTree(t *testing.T, tree rtree) {
 	}
 
 	if tree.Len() != len(keys) {
-		t.Fatalf("wrong lenght, expected %d, got %d", len(keys), tree.Len())
+		t.Fatalf("wrong length, expected %d, got %d", len(keys), tree.Len())
 	}
 
 	// get
@@ -139,7 +139,7 @@ func testRadixTree(t *testing.T, tree rtree) {
 		t.Error("expected Len() to return 0 after all keys deleted")
 	}
 
-	// expect Delete to return false bc all nodex deleted
+	// expect Delete to return false bc all nodes deleted
 	for _, key := range keys {
 		if deleted := tree.Delete(key); deleted {
 			t.Errorf("expected key %s to be cleaned by delete", string(key[0]))

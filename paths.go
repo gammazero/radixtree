@@ -282,7 +282,7 @@ func (tree *Paths) NewIterator() *PathsIterator {
 
 // Copy makes a copy of the current iterator.  This allows branching an
 // iterator into two iterators that can take separate paths.  These iterators
-// do not affect eachother and can be iterated concurrently.
+// do not affect each other and can be iterated concurrently.
 func (it *PathsIterator) Copy() *PathsIterator {
 	return &PathsIterator{
 		p:       it.p,
@@ -439,7 +439,7 @@ func (node *pathsNode) inspect(pathSep, link, key string, depth int, inspectFn I
 	return false
 }
 
-// getEdge binary searchs for edge
+// getEdge binary searches for edge
 func (node *pathsNode) getEdge(radix string) *pathsNode {
 	count := len(node.edges)
 	idx := sort.Search(count, func(i int) bool {
@@ -451,7 +451,7 @@ func (node *pathsNode) getEdge(radix string) *pathsNode {
 	return nil
 }
 
-// addEdge binary searchs to find where to insert edge, and inserts at
+// addEdge binary searches to find where to insert edge, and inserts at
 func (node *pathsNode) addEdge(e pathEdge) {
 	count := len(node.edges)
 	idx := sort.Search(count, func(i int) bool {

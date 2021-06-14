@@ -345,7 +345,7 @@ func TestBytesDelete(t *testing.T) {
 	}
 	if string(node.prefix) != "ato" {
 		t.Log(dump(rt))
-		t.Error("worng prefix for compresses node: ", node.prefix)
+		t.Error("wrong prefix for compresses node: ", node.prefix)
 	}
 
 	// Test deleting key that does not exist
@@ -660,17 +660,6 @@ func TestBytesEdgeSort(t *testing.T) {
 	if edges.Less(1, 0) {
 		t.Fatal("bad Swap")
 	}
-}
-
-func TestBytesAppleCart(t *testing.T) {
-	r := New()
-	r.Put("apple", "APPLE")
-	r.Put("applecart", "APPLECART")
-	val, ok := r.Get("app")
-	if ok || val != nil {
-		t.Fatal("should not have returned value")
-	}
-	t.Log(dump(r))
 }
 
 func TestBytes(t *testing.T) {
