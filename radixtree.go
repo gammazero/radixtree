@@ -14,4 +14,4 @@ type WalkFunc func(key string, value interface{}) bool
 // number of children the node has.
 //
 // If the function returns true Inspect stops immediately and returns.
-type InspectFunc func(link, prefix, key string, depth, children int, value interface{}) bool
+type InspectFunc func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool

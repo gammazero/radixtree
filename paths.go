@@ -425,10 +425,12 @@ func (node *pathsNode) inspect(pathSep, link, key string, depth int, inspectFn I
 	}
 	key = strings.Join(keyParts, pathSep)
 	var val interface{}
+	var hasVal bool
 	if node.leaf != nil {
 		val = node.leaf.value
+		hasVal = true
 	}
-	if inspectFn(link, pfx, key, depth, len(node.edges), val) {
+	if inspectFn(link, pfx, key, depth, len(node.edges), hasVal, val) {
 		return true
 	}
 	for _, edge := range node.edges {
