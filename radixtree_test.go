@@ -21,11 +21,15 @@ type rtree interface {
 // Use the Inspect functionality to create a function to dump the tree.
 func dump(tree rtree) string {
 	var b strings.Builder
-	tree.Inspect(func(link, prefix, key string, depth, children int, value interface{}) bool {
+	tree.Inspect(func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool {
 		for ; depth > 0; depth-- {
 			b.WriteString("  ")
 		}
-		b.WriteString(fmt.Sprintf("%s-> (%q, %v) key: %q children: %d\n", link, prefix, value, key, children))
+		if hasValue {
+			b.WriteString(fmt.Sprintf("%s-> (%q, [%s: %q]) children: %d\n", link, prefix, key, value, children))
+		} else {
+			b.WriteString(fmt.Sprintf("%s-> (%q, [%s])] children: %d\n", link, prefix, key, children))
+		}
 		return false
 	})
 	return b.String()
@@ -547,8 +551,8 @@ func testInspectStop(t *testing.T, tree rtree) {
 		tree.Put(table[i].key, table[i].val)
 	}
 	var keys []string
-	inspectFn := func(link, prefix, key string, depth, children int, value interface{}) bool {
-		if value == nil {
+	inspectFn := func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool {
+		if !hasValue {
 			// Do not count internal nodes
 			return false
 		}

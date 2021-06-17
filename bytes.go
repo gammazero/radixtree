@@ -76,10 +76,11 @@ func (tree *Bytes) Get(key string) (interface{}, bool) {
 		}
 
 		// Consume key data
-		if !strings.HasPrefix(key[1:], node.prefix) {
+		key = key[1:]
+		if !strings.HasPrefix(key, node.prefix) {
 			break
 		}
-		key = key[len(node.prefix)+1:]
+		key = key[len(node.prefix):]
 	}
 	return nil, false
 }
@@ -218,13 +219,14 @@ func (tree *Bytes) Walk(key string, walkFn WalkFunc) {
 		}
 
 		// Consume key data
-		if !strings.HasPrefix(key[1:], node.prefix) {
-			if strings.HasPrefix(node.prefix, key[1:]) {
+		key = key[1:]
+		if !strings.HasPrefix(key, node.prefix) {
+			if strings.HasPrefix(node.prefix, key) {
 				break
 			}
 			return
 		}
-		key = key[len(node.prefix)+1:]
+		key = key[len(node.prefix):]
 	}
 
 	// Walk down tree starting at node located at key
@@ -253,10 +255,11 @@ func (tree *Bytes) WalkPath(key string, walkFn WalkFunc) {
 			return
 		}
 
-		if !strings.HasPrefix(key[1:], node.prefix) {
+		key = key[1:]
+		if !strings.HasPrefix(key, node.prefix) {
 			return
 		}
-		key = key[len(node.prefix)+1:]
+		key = key[len(node.prefix):]
 	}
 }
 
@@ -382,15 +385,14 @@ func (node *bytesNode) compress() {
 	if len(node.edges) != 1 || node.leaf != nil {
 		return
 	}
-	for _, edge := range node.edges {
-		pfx := make([]byte, len(node.prefix)+1+len(edge.node.prefix))
-		copy(pfx, node.prefix)
-		pfx[len(node.prefix)] = edge.radix
-		copy(pfx[len(node.prefix)+1:], edge.node.prefix)
-		node.prefix = string(pfx)
-		node.leaf = edge.node.leaf
-		node.edges = edge.node.edges
-	}
+	edge := node.edges[0]
+	pfx := make([]byte, len(node.prefix)+1+len(edge.node.prefix))
+	copy(pfx, node.prefix)
+	pfx[len(node.prefix)] = edge.radix
+	copy(pfx[len(node.prefix)+1:], edge.node.prefix)
+	node.prefix = string(pfx)
+	node.leaf = edge.node.leaf
+	node.edges = edge.node.edges
 }
 
 func (node *bytesNode) walk(walkFn WalkFunc) bool {
@@ -408,10 +410,12 @@ func (node *bytesNode) walk(walkFn WalkFunc) bool {
 func (node *bytesNode) inspect(link, key string, depth int, inspectFn InspectFunc) bool {
 	key += link + node.prefix
 	var val interface{}
+	var hasVal bool
 	if node.leaf != nil {
 		val = node.leaf.value
+		hasVal = true
 	}
-	if inspectFn(link, node.prefix, key, depth, len(node.edges), val) {
+	if inspectFn(link, node.prefix, key, depth, len(node.edges), hasVal, val) {
 		return true
 	}
 	for _, edge := range node.edges {
