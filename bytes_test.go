@@ -686,6 +686,10 @@ func TestBytesInspectStop(t *testing.T) {
 	testInspectStop(t, New())
 }
 
+func TestGetAfterDelete(t *testing.T) {
+	testGetAfterDelete(t, New())
+}
+
 func TestBytesStringConvert(t *testing.T) {
 	tree := New()
 	for _, w := range []string{"Bart", `Bartók`, `AbónXw`, `AbónYz`} {
