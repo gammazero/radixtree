@@ -59,28 +59,24 @@ func (tree *Bytes) Len() int {
 // value present for the key.
 func (tree *Bytes) Get(key string) (interface{}, bool) {
 	node := &tree.root
-	for {
-		// All key data consumed and matched against node prefix, so this is
-		// the requested or an intermediate node.
-		if len(key) == 0 {
-			if node.leaf != nil {
-				return node.leaf.value, true
-			}
-			break
-		}
-
+	// Consume key data while mathcing edge and prefix; return if remaining key
+	// data matches nothing.
+	for len(key) != 0 {
 		// Find edge for radix
 		node = node.getEdge(key[0])
 		if node == nil {
-			break
+			return nil, false
 		}
 
 		// Consume key data
 		key = key[1:]
 		if !strings.HasPrefix(key, node.prefix) {
-			break
+			return nil, false
 		}
 		key = key[len(node.prefix):]
+	}
+	if node.leaf != nil {
+		return node.leaf.value, true
 	}
 	return nil, false
 }
@@ -161,32 +157,26 @@ func (tree *Bytes) Delete(key string) bool {
 	var (
 		parents []*bytesNode
 		links   []byte
-		p       int
 	)
-	for i := 0; i < len(key); i++ {
-		radix := key[i]
-		if p < len(node.prefix) {
-			if radix == node.prefix[p] {
-				p++
-				continue
-			}
-			return false
-		}
+	for len(key) != 0 {
 		parents = append(parents, node)
-		links = append(links, radix)
-		node = node.getEdge(radix)
+
+		// Find edge for radix
+		node = node.getEdge(key[0])
 		if node == nil {
 			// node does not exist
 			return false
 		}
-		p = 0
+		links = append(links, key[0])
+
+		// Consume key data
+		key = key[1:]
+		if !strings.HasPrefix(key, node.prefix) {
+			return false
+		}
+		key = key[len(node.prefix):]
 	}
 
-	// Key was not completely consumed traversing tree, so tree does not
-	// contain anything for key.
-	if p < len(node.prefix) {
-		return false
-	}
 	var deleted bool
 	if node.leaf != nil {
 		// delete the node value, indicate that value was deleted
@@ -199,7 +189,9 @@ func (tree *Bytes) Delete(key string) bool {
 	node = node.prune(parents, links)
 
 	// If node has become compressible, compress it
-	node.compress()
+	if node != &tree.root {
+		node.compress()
+	}
 
 	return deleted
 }

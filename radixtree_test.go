@@ -46,7 +46,7 @@ func testRadixTree(t *testing.T, tree rtree) {
 		"/rat/whiskers",
 	}
 
-	// get keys that do not exist
+	// check that keys do not exist
 	for _, key := range keys {
 		if val, ok := tree.Get(key); ok {
 			t.Errorf("expected key %s to be missing, found value %v", key, val)
@@ -133,11 +133,15 @@ func testRadixTree(t *testing.T, tree rtree) {
 	}
 
 	// delete, expect Delete to return true indicating a node was nil'd
+	t.Log("Before")
+	t.Log(dump(tree))
 	for _, key := range keys {
 		if deleted := tree.Delete(key); !deleted {
 			t.Errorf("expected key %s to be deleted", key)
 		}
 	}
+	t.Log("After")
+	t.Log(dump(tree))
 
 	if tree.Len() != 0 {
 		t.Error("expected Len() to return 0 after all keys deleted")
@@ -569,5 +573,31 @@ func testInspectStop(t *testing.T, tree rtree) {
 	tree.Inspect(inspectFn)
 	if len(keys) != len(table)-2 {
 		t.Errorf("expected nodes walked to be %d, got %d: %v", len(table)-2, len(keys), keys)
+	}
+}
+
+func testGetAfterDelete(t *testing.T, tree rtree) {
+	keys := []string{
+		"bird",
+		"rat",
+	}
+
+	// store keys
+	for _, key := range keys {
+		tree.Put(key, strings.ToUpper(key))
+	}
+
+	t.Log("Before")
+	t.Log(dump(tree))
+
+	if !tree.Delete("bird") {
+		t.Fatal("should have deleted bird")
+	}
+	t.Log("After")
+	t.Log(dump(tree))
+
+	_, ok := tree.Get("rat")
+	if !ok {
+		t.Fatal("Did not get rat")
 	}
 }

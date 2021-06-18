@@ -500,3 +500,7 @@ func TestPathsWalkStop(t *testing.T) {
 func TestPathsInspectStop(t *testing.T) {
 	testInspectStop(t, NewPaths("/"))
 }
+
+func TestPathsGetAfterDelete(t *testing.T) {
+	testGetAfterDelete(t, NewPaths("/"))
+}
