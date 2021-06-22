@@ -14,14 +14,6 @@ const (
 //
 // Benchmarks
 //
-func BenchmarkWordsMapGet(b *testing.B) {
-	benchmarkMapToCompareWithGet(wordsPath, b)
-}
-
-func BenchmarkWordsMapPut(b *testing.B) {
-	benchmarkMapToCompareWithPut(wordsPath, b)
-}
-
 func BenchmarkWordsBytesGet(b *testing.B) {
 	benchmarkBytesGet(wordsPath, b)
 }
@@ -39,11 +31,6 @@ func BenchmarkWordsBytesWalkPath(b *testing.B) {
 }
 
 // ----- Web2a -----
-
-func BenchmarkWeb2aMap(b *testing.B) {
-	benchmarkMapToCompareWithGet(web2aPath, b)
-}
-
 func BenchmarkWeb2aBytesGet(b *testing.B) {
 	benchmarkBytesGet(web2aPath, b)
 }
@@ -74,46 +61,6 @@ func BenchmarkWeb2aPathsWalk(b *testing.B) {
 
 func BenchmarkWeb2aPathsWalkPath(b *testing.B) {
 	benchmarkPathsWalkPath(web2aPath, b)
-}
-
-func benchmarkMapToCompareWithGet(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	m := make(map[string]string, len(words))
-	for _, w := range words {
-		m[w] = w
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		for _, w := range words {
-			_, ok := m[w]
-			if !ok {
-				panic("missing value")
-			}
-		}
-	}
-}
-
-func benchmarkMapToCompareWithPut(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		m := map[string]string{}
-		for _, w := range words {
-			m[w] = w
-		}
-		if len(m) != len(words) {
-			panic("wrong size map")
-		}
-	}
 }
 
 func benchmarkBytesPut(filePath string, b *testing.B) {
@@ -252,9 +199,9 @@ func benchmarkPathsWalk(filePath string, b *testing.B) {
 			count++
 			return false
 		})
-	}
-	if count != len(words) {
-		panic("wrong count")
+		if count != len(words) {
+			panic("wrong count")
+		}
 	}
 }
 
@@ -278,9 +225,9 @@ func benchmarkPathsWalkPath(filePath string, b *testing.B) {
 				return false
 			})
 		}
-	}
-	if count <= len(words) {
-		panic("wrong count")
+		if count < len(words) {
+			panic("wrong count")
+		}
 	}
 }
 

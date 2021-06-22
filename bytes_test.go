@@ -640,28 +640,6 @@ func TestSimpleBytesWalk(t *testing.T) {
 	}
 }
 
-func TestBytesEdgeSort(t *testing.T) {
-	b := []byte("az")
-	var edges byteEdges = []byteEdge{byteEdge{b[1], nil}, byteEdge{b[0], nil}}
-
-	if edges.Len() != 2 {
-		t.Fatal("bad Len")
-	}
-	if edges.Less(0, 1) {
-		t.Fatal("bad Less")
-	}
-	if !edges.Less(1, 0) {
-		t.Fatal("bad Less")
-	}
-	edges.Swap(0, 1)
-	if !edges.Less(0, 1) {
-		t.Fatal("bad Swap")
-	}
-	if edges.Less(1, 0) {
-		t.Fatal("bad Swap")
-	}
-}
-
 func TestBytes(t *testing.T) {
 	testRadixTree(t, New())
 }
