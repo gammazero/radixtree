@@ -1,7 +1,6 @@
 package radixtree
 
 import (
-	"sort"
 	"strings"
 )
 
@@ -21,7 +20,7 @@ type pathsNode struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
 	prefix []string
-	edges  pathEdges
+	edges  []pathEdge
 	leaf   *leaf
 }
 
@@ -45,16 +44,9 @@ func (tree *Paths) PathSeparator() string {
 }
 
 type pathEdge struct {
-	label string
+	radix string
 	node  *pathsNode
 }
-
-// pathEdges implements sort.Interface
-type pathEdges []pathEdge
-
-func (e pathEdges) Len() int           { return len(e) }
-func (e pathEdges) Less(i, j int) bool { return e[i].label < e[j].label }
-func (e pathEdges) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
 
 // PathsIterator traverses a Paths radix tree one path segment at a time.
 //
@@ -391,7 +383,7 @@ func (node *pathsNode) compress() {
 	for _, edge := range node.edges {
 		pfx := make([]string, len(node.prefix)+1+len(edge.node.prefix))
 		copy(pfx, node.prefix)
-		pfx[len(node.prefix)] = edge.label
+		pfx[len(node.prefix)] = edge.radix
 		copy(pfx[len(node.prefix)+1:], edge.node.prefix)
 		node.prefix = pfx
 		node.leaf = edge.node.leaf
@@ -434,20 +426,34 @@ func (node *pathsNode) inspect(pathSep, link, key string, depth int, inspectFn I
 		return true
 	}
 	for _, edge := range node.edges {
-		if edge.node.inspect(pathSep, edge.label, key, depth+1, inspectFn) {
+		if edge.node.inspect(pathSep, edge.radix, key, depth+1, inspectFn) {
 			return true
 		}
 	}
 	return false
 }
 
+// indexPathsEdge binary searches for the edge index
+//
+// This is faster then going through sort.Interface for repeated searches.
+func (node *pathsNode) indexPathsEdge(radix string) int {
+	n := len(node.edges)
+	i, j := 0, n
+	for i < j {
+		h := int(uint(i+j) >> 1) // avoid overflow when computing h
+		if node.edges[h].radix < radix {
+			i = h + 1
+		} else {
+			j = h
+		}
+	}
+	return i
+}
+
 // getEdge binary searches for edge
 func (node *pathsNode) getEdge(radix string) *pathsNode {
-	count := len(node.edges)
-	idx := sort.Search(count, func(i int) bool {
-		return node.edges[i].label >= radix
-	})
-	if idx < count && node.edges[idx].label == radix {
+	idx := node.indexPathsEdge(radix)
+	if idx < len(node.edges) && node.edges[idx].radix == radix {
 		return node.edges[idx].node
 	}
 	return nil
@@ -455,10 +461,7 @@ func (node *pathsNode) getEdge(radix string) *pathsNode {
 
 // addEdge binary searches to find where to insert edge, and inserts at
 func (node *pathsNode) addEdge(e pathEdge) {
-	count := len(node.edges)
-	idx := sort.Search(count, func(i int) bool {
-		return node.edges[i].label >= e.label
-	})
+	idx := node.indexPathsEdge(e.radix)
 	node.edges = append(node.edges, pathEdge{})
 	copy(node.edges[idx+1:], node.edges[idx:])
 	node.edges[idx] = e
@@ -466,11 +469,8 @@ func (node *pathsNode) addEdge(e pathEdge) {
 
 // delEdge binary searches for edge and removes it
 func (node *pathsNode) delEdge(radix string) {
-	count := len(node.edges)
-	idx := sort.Search(count, func(i int) bool {
-		return node.edges[i].label >= radix
-	})
-	if idx < count && node.edges[idx].label == radix {
+	idx := node.indexPathsEdge(radix)
+	if idx < len(node.edges) && node.edges[idx].radix == radix {
 		copy(node.edges[idx:], node.edges[idx+1:])
 		node.edges[len(node.edges)-1] = pathEdge{}
 		node.edges = node.edges[:len(node.edges)-1]

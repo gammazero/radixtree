@@ -456,27 +456,6 @@ func TestSimplePathWalk(t *testing.T) {
 	}
 }
 
-func TestPathsEdgeSort(t *testing.T) {
-	var edges pathEdges = []pathEdge{pathEdge{"xyz/987", nil}, pathEdge{"abc/123", nil}}
-
-	if edges.Len() != 2 {
-		t.Fatal("bad Len")
-	}
-	if edges.Less(0, 1) {
-		t.Fatal("bad Less")
-	}
-	if !edges.Less(1, 0) {
-		t.Fatal("bad Less")
-	}
-	edges.Swap(0, 1)
-	if !edges.Less(0, 1) {
-		t.Fatal("bad Swap")
-	}
-	if edges.Less(1, 0) {
-		t.Fatal("bad Swap")
-	}
-}
-
 func TestPaths(t *testing.T) {
 	testRadixTree(t, NewPaths("/"))
 }

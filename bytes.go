@@ -1,7 +1,6 @@
 package radixtree
 
 import (
-	"sort"
 	"strings"
 )
 
@@ -15,7 +14,7 @@ type bytesNode struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
 	prefix string
-	edges  byteEdges
+	edges  []byteEdge
 	leaf   *leaf
 }
 
@@ -33,13 +32,6 @@ type byteEdge struct {
 	radix byte
 	node  *bytesNode
 }
-
-// byteEdges implements sort.Interface
-type byteEdges []byteEdge
-
-func (e byteEdges) Len() int           { return len(e) }
-func (e byteEdges) Less(i, j int) bool { return e[i].radix < e[j].radix }
-func (e byteEdges) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
 
 // BytesIterator is a stateful iterator that traverses a Bytes radix tree one
 // byte at a time.
@@ -418,13 +410,27 @@ func (node *bytesNode) inspect(link, key string, depth int, inspectFn InspectFun
 	return false
 }
 
+// indexEdge binary searches for the edge index
+//
+// This is faster then going through sort.Interface for repeated searches.
+func (node *bytesNode) indexEdge(radix byte) int {
+	n := len(node.edges)
+	i, j := 0, n
+	for i < j {
+		h := int(uint(i+j) >> 1) // avoid overflow when computing h
+		if node.edges[h].radix < radix {
+			i = h + 1
+		} else {
+			j = h
+		}
+	}
+	return i
+}
+
 // getEdge binary searches for edge
 func (node *bytesNode) getEdge(radix byte) *bytesNode {
-	count := len(node.edges)
-	idx := sort.Search(count, func(i int) bool {
-		return node.edges[i].radix >= radix
-	})
-	if idx < count && node.edges[idx].radix == radix {
+	idx := node.indexEdge(radix)
+	if idx < len(node.edges) && node.edges[idx].radix == radix {
 		return node.edges[idx].node
 	}
 	return nil
@@ -432,10 +438,7 @@ func (node *bytesNode) getEdge(radix byte) *bytesNode {
 
 // addEdge binary searches to find where to insert edge, and inserts at
 func (node *bytesNode) addEdge(e byteEdge) {
-	count := len(node.edges)
-	idx := sort.Search(count, func(i int) bool {
-		return node.edges[i].radix >= e.radix
-	})
+	idx := node.indexEdge(e.radix)
 	node.edges = append(node.edges, byteEdge{})
 	copy(node.edges[idx+1:], node.edges[idx:])
 	node.edges[idx] = e
@@ -443,11 +446,8 @@ func (node *bytesNode) addEdge(e byteEdge) {
 
 // delEdge binary searches for edge and removes it
 func (node *bytesNode) delEdge(radix byte) {
-	count := len(node.edges)
-	idx := sort.Search(count, func(i int) bool {
-		return node.edges[i].radix >= radix
-	})
-	if idx < count && node.edges[idx].radix == radix {
+	idx := node.indexEdge(radix)
+	if idx < len(node.edges) && node.edges[idx].radix == radix {
 		copy(node.edges[idx:], node.edges[idx+1:])
 		node.edges[len(node.edges)-1] = byteEdge{}
 		node.edges = node.edges[:len(node.edges)-1]
