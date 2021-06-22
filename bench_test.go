@@ -63,25 +63,6 @@ func BenchmarkWeb2aPathsWalkPath(b *testing.B) {
 	benchmarkPathsWalkPath(web2aPath, b)
 }
 
-func benchmarkMapToCompareWithPut(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		m := map[string]string{}
-		for _, w := range words {
-			m[w] = w
-		}
-		if len(m) != len(words) {
-			panic("wrong size map")
-		}
-	}
-}
-
 func benchmarkBytesPut(filePath string, b *testing.B) {
 	words, err := loadWords(filePath)
 	if err != nil {
