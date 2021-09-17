@@ -107,7 +107,7 @@ func (tree *Bytes) Put(key string, value interface{}) bool {
 			},
 		}
 		if i < len(key)-1 {
-			newChild.prefix = string(key[i+1:])
+			newChild.prefix = key[i+1:]
 		}
 		newEdge = byteEdge{radix, newChild}
 		hasNewEdge = true
