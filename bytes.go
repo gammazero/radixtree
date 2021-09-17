@@ -370,11 +370,12 @@ func (node *bytesNode) compress() {
 		return
 	}
 	edge := node.edges[0]
-	pfx := make([]byte, len(node.prefix)+1+len(edge.node.prefix))
-	copy(pfx, node.prefix)
-	pfx[len(node.prefix)] = edge.radix
-	copy(pfx[len(node.prefix)+1:], edge.node.prefix)
-	node.prefix = string(pfx)
+	var b strings.Builder
+	b.Grow(len(node.prefix) + 1 + len(edge.node.prefix))
+	b.WriteString(node.prefix)
+	b.WriteByte(edge.radix)
+	b.WriteString(edge.node.prefix)
+	node.prefix = b.String()
 	node.leaf = edge.node.leaf
 	node.edges = edge.node.edges
 }
