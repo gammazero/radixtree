@@ -48,6 +48,11 @@ type pathEdge struct {
 	node  *pathsNode
 }
 
+// bytesIterator iterates all keys and values in a Paths instance
+type pathsTreeIter struct {
+	nodes []*pathsNode
+}
+
 // PathsIterator traverses a Paths radix tree one path segment at a time.
 //
 // Any modification to the tree invalidates the iterator.
@@ -261,6 +266,42 @@ func (tree *Paths) WalkPath(key string, walkFn WalkFunc) {
 // The tree is traversed in lexical order, making the output deterministic.
 func (tree *Paths) Inspect(inspectFn InspectFunc) {
 	tree.root.inspect(tree.PathSeparator(), "", "", 0, inspectFn)
+}
+
+// Iter returns a new Iterator
+func (tree *Paths) Iter() Iterator {
+	return &pathsTreeIter{
+		nodes: []*pathsNode{&tree.root},
+	}
+}
+
+// Copy satisfies the Iterator interface
+func (it *pathsTreeIter) Copy() Iterator {
+	nodes := make([]*pathsNode, len(it.nodes))
+	copy(nodes, it.nodes)
+	return &pathsTreeIter{
+		nodes: nodes,
+	}
+}
+
+// Next satisfies the Iterator interface
+func (it *pathsTreeIter) Next() (key string, value interface{}, done bool) {
+	for {
+		if len(it.nodes) == 0 {
+			break
+		}
+		node := it.nodes[len(it.nodes)-1]
+		it.nodes = it.nodes[:len(it.nodes)-1]
+
+		for i := len(node.edges) - 1; i >= 0; i-- {
+			it.nodes = append(it.nodes, node.edges[i].node)
+		}
+
+		if node.leaf != nil {
+			return node.leaf.key, node.leaf.value, false
+		}
+	}
+	return "", nil, true
 }
 
 // NewIterator returns a new PathsIterator instance that begins iterating

@@ -15,6 +15,7 @@ type rtree interface {
 	Walk(key string, walkFn WalkFunc)
 	WalkPath(key string, walkFn WalkFunc)
 	Inspect(inspectFn InspectFunc)
+	Iter() Iterator
 	Len() int
 }
 
@@ -312,6 +313,69 @@ func testWalk(t *testing.T, tree rtree) {
 	tree.Walk("", walkFn)
 	if err != nil {
 		t.Error(err)
+	}
+
+	if len(visited) != len(keys) {
+		t.Error("wrong number of iterm iterated")
+	}
+
+	// each key/value visited exactly once
+	for key, visitedCount := range visited {
+		if visitedCount != 1 {
+			t.Errorf("expected key %s to be visited exactly once, got %v", key, visitedCount)
+		}
+	}
+
+	visited = make(map[string]int, len(keys))
+
+	var iterCopy Iterator
+	iter := tree.Iter()
+	for {
+		key, val, done := iter.Next()
+		if done {
+			break
+		}
+		t.Log("Iterated key:", key)
+		if walkFn(key, val) {
+			if err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+		if key == "rat/winks/wisely/once" {
+			iterCopy = iter.Copy()
+		}
+	}
+
+	if len(visited) != len(keys) {
+		t.Error("wrong number of iterm iterated")
+	}
+
+	// each key/value visited exactly once
+	for key, visitedCount := range visited {
+		if visitedCount != 1 {
+			t.Errorf("expected key %s to be visited exactly once, got %v", key, visitedCount)
+		}
+	}
+
+	visited = make(map[string]int, 4)
+
+	for {
+		key, val, done := iterCopy.Next()
+		if done {
+			break
+		}
+		t.Log("Iterated key:", key)
+		if walkFn(key, val) {
+			if err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+	}
+
+	if len(visited) != 4 {
+		t.Error("Wrong iteration count of copied iterator:", len(visited))
 	}
 
 	// each key/value visited exactly once
