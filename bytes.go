@@ -33,6 +33,11 @@ type byteEdge struct {
 	node  *bytesNode
 }
 
+// bytesIterator iterates all keys and values in a Bytes instance
+type bytesTreeIter struct {
+	nodes []*bytesNode
+}
+
 // BytesIterator is a stateful iterator that traverses a Bytes radix tree one
 // byte at a time.
 //
@@ -257,6 +262,42 @@ func (tree *Bytes) WalkPath(key string, walkFn WalkFunc) {
 // The tree is traversed in lexical order, making the output deterministic.
 func (tree *Bytes) Inspect(inspectFn InspectFunc) {
 	tree.root.inspect("", "", 0, inspectFn)
+}
+
+// Iter returns a new Iterator
+func (tree *Bytes) Iter() Iterator {
+	return &bytesTreeIter{
+		nodes: []*bytesNode{&tree.root},
+	}
+}
+
+// Copy satisfies the Iterator interface
+func (it *bytesTreeIter) Copy() Iterator {
+	nodes := make([]*bytesNode, len(it.nodes))
+	copy(nodes, it.nodes)
+	return &bytesTreeIter{
+		nodes: nodes,
+	}
+}
+
+// Next satisfies the Iterator interface
+func (it *bytesTreeIter) Next() (key string, value interface{}, done bool) {
+	for {
+		if len(it.nodes) == 0 {
+			break
+		}
+		node := it.nodes[len(it.nodes)-1]
+		it.nodes = it.nodes[:len(it.nodes)-1]
+
+		for i := len(node.edges) - 1; i >= 0; i-- {
+			it.nodes = append(it.nodes, node.edges[i].node)
+		}
+
+		if node.leaf != nil {
+			return node.leaf.key, node.leaf.value, false
+		}
+	}
+	return "", nil, true
 }
 
 // NewIterator returns a new BytesIterator instance that begins iterating from

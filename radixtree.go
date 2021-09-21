@@ -15,3 +15,15 @@ type WalkFunc func(key string, value interface{}) bool
 //
 // If the function returns true Inspect stops immediately and returns.
 type InspectFunc func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool
+
+// Iterator iterates all keys and values in the radixtree
+//
+// Is is safe to use different iterators concurrently.  Any modification to the
+// tree that the iterator was created from invalidates the iterator.
+type Iterator interface {
+	// Next returns the next key and value stored in the tree, and true when
+	// iteration is complete
+	Next() (key string, value interface{}, more bool)
+	// Copy creates a new Iterator at this iterator's state of iteration
+	Copy() Iterator
+}
