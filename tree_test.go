@@ -1230,6 +1230,16 @@ func TestStringConvert(t *testing.T) {
 	})
 }
 
+func TestDepricated(t *testing.T) {
+	tree := New()
+	tree.Walk("", func(k string, v interface{}) bool {
+		return false
+	})
+	tree.WalkPath("", func(k string, v interface{}) bool {
+		return false
+	})
+}
+
 // Use the Inspect functionality to create a function to dump the tree.
 func dump(tree *Tree) string {
 	var b strings.Builder
