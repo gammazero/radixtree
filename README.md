@@ -14,7 +14,7 @@ The implementation is optimized for Get performance and allocates 0 bytes of hea
 
 Package `radixtree` implements an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree.  This data structure is useful to quickly lookup data by key, find values whose keys have a common prefix, or find values whose keys are a prefix (i.e. found along the way) of a search key.
 
-The implementation is optimized for Get performance and allocate 0 bytes of heap memory for any read operation (Get, WalkFrom, WalkTo, etc.); therefore no garbage to collect.  Once a radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the data structure. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
+The implementation is optimized for Get performance and allocate 0 bytes of heap memory for any read operation (Get, Walk, WalkPath, etc.); therefore no garbage to collect.  Once a radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the data structure. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
 
 This radix tree offers the following features:
 
@@ -55,7 +55,7 @@ func main() {
     // Output: Found TOM
 
     // Find all items whose keys start with "tom"
-    rt.WalkFrom("tom", func(key string, value interface{}) bool {
+    rt.Walk("tom", func(key string, value interface{}) bool {
         fmt.Println(value)
         return false
     })
@@ -65,7 +65,7 @@ func main() {
     // TOMMY
 
     // Find all items whose keys are a prefix of "tomato"
-    rt.WalkTo("tomato", func(key string, value interface{}) bool {
+    rt.WalkPath("tomato", func(key string, value interface{}) bool {
         fmt.Println(value)
         return false
     })

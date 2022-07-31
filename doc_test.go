@@ -6,7 +6,7 @@ import (
 	"github.com/gammazero/radixtree"
 )
 
-func ExampleTree_WalkFrom() {
+func ExampleTree_Walk() {
 	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
@@ -14,13 +14,13 @@ func ExampleTree_WalkFrom() {
 	rt.Put("tornado", "TORNADO")
 
 	// Find all items whose keys start with "tom"
-	rt.WalkFrom("tom", func(key string, value interface{}) bool {
+	rt.Walk("tom", func(key string, value interface{}) bool {
 		fmt.Println(value)
 		return false
 	})
 }
 
-func ExampleTree_WalkTo() {
+func ExampleTree_WalkPath() {
 	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
@@ -28,7 +28,7 @@ func ExampleTree_WalkTo() {
 	rt.Put("tornado", "TORNADO")
 
 	// Find all items that are a prefix of "tomato"
-	rt.WalkTo("tomato", func(key string, value interface{}) bool {
+	rt.WalkPath("tomato", func(key string, value interface{}) bool {
 		fmt.Println(value)
 		return false
 	})

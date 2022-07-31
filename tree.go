@@ -195,12 +195,12 @@ func (t *Tree) Delete(key string) bool {
 	return deleted
 }
 
-// WalkFrom visits all nodes whose keys match or are prefixed by the specified
-// key, calling walkFn for each value found. If walkFn returns true, WalkFrom
-// returns. Use nil key to visit all nodes starting from the root or the Tree.
+// Walk visits all nodes whose keys match or are prefixed by the specified key,
+// calling walkFn for each value found. If walkFn returns true, Walk returns.
+// Use empty key "" to visit all nodes starting from the root or the Tree.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree) WalkFrom(key string, walkFn WalkFunc) {
+func (t *Tree) Walk(key string, walkFn WalkFunc) {
 	node := &t.root
 	for len(key) != 0 {
 		if node = node.getEdge(key[0]); node == nil {
@@ -222,12 +222,12 @@ func (t *Tree) WalkFrom(key string, walkFn WalkFunc) {
 	node.walk(walkFn)
 }
 
-// WalkTo walks each node along the path in the tree from the root to the node
-// at the given key, calling walkFn for each node that has a value. If walkFn
-// returns true, WalkTo returns.
+// WalkPath walks each node along the path from the root to the node at the
+// given key, calling walkFn for each node that has a value. If walkFn returns
+// true, WalkPath returns.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree) WalkTo(key string, walkFn WalkFunc) {
+func (t *Tree) WalkPath(key string, walkFn WalkFunc) {
 	node := &t.root
 	for {
 		if node.leaf != nil && walkFn(node.leaf.key, node.leaf.value) {
@@ -397,9 +397,3 @@ func (node *radixNode) delEdge(radix byte) {
 
 // Deprecated: Bytes is deprecated, use Tree.
 type Bytes = Tree
-
-// Deprecated: WalkPath is deprecated, use WalkTo.
-func (t *Tree) WalkPath(key string, walkFn WalkFunc) { t.WalkTo(key, walkFn) }
-
-// Deprecated: Walk is deprecated, use WalkFrom.
-func (t *Tree) Walk(key string, walkFn WalkFunc) { t.WalkFrom(key, walkFn) }

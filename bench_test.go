@@ -44,23 +44,23 @@ func BenchmarkPut(b *testing.B) {
 	})
 }
 
-func BenchmarkWalkFrom(b *testing.B) {
+func BenchmarkWalk(b *testing.B) {
 	b.Run("Words", func(b *testing.B) {
-		benchmarkWalkFrom(b, web2Path)
+		benchmarkWalk(b, web2Path)
 	})
 
 	b.Run("Web2a", func(b *testing.B) {
-		benchmarkWalkFrom(b, web2aPath)
+		benchmarkWalk(b, web2aPath)
 	})
 }
 
-func BenchmarkWalkTo(b *testing.B) {
+func BenchmarkWalkPath(b *testing.B) {
 	b.Run("Words", func(b *testing.B) {
-		benchmarkWalkTo(b, web2Path)
+		benchmarkWalkPath(b, web2Path)
 	})
 
 	b.Run("Web2a", func(b *testing.B) {
-		benchmarkWalkTo(b, web2aPath)
+		benchmarkWalkPath(b, web2aPath)
 	})
 }
 
@@ -97,7 +97,7 @@ func benchmarkPut(b *testing.B, filePath string) {
 	}
 }
 
-func benchmarkWalkFrom(b *testing.B, filePath string) {
+func benchmarkWalk(b *testing.B, filePath string) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
@@ -111,17 +111,17 @@ func benchmarkWalkFrom(b *testing.B, filePath string) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		tree.WalkFrom("", func(k string, value interface{}) bool {
+		tree.Walk("", func(k string, value interface{}) bool {
 			count++
 			return false
 		})
 	}
 	if count != len(words) {
-		b.Fatalf("WalkFrom wrong count, expected %d got %d", len(words), count)
+		b.Fatalf("Walk wrong count, expected %d got %d", len(words), count)
 	}
 }
 
-func benchmarkWalkTo(b *testing.B, filePath string) {
+func benchmarkWalkPath(b *testing.B, filePath string) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
@@ -136,7 +136,7 @@ func benchmarkWalkTo(b *testing.B, filePath string) {
 	for n := 0; n < b.N; n++ {
 		word := words[n%len(words)]
 		count := 0
-		tree.WalkTo(word, func(key string, value interface{}) bool {
+		tree.WalkPath(word, func(key string, value interface{}) bool {
 			count++
 			return false
 		})
@@ -145,7 +145,7 @@ func benchmarkWalkTo(b *testing.B, filePath string) {
 		}
 	}
 	if zeroCount {
-		b.Fatalf("At least one word was not found by WalkTo")
+		b.Fatalf("At least one word was not found by WalkPath")
 	}
 }
 

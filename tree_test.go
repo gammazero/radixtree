@@ -495,14 +495,14 @@ func TestBuildEdgeCases(t *testing.T) {
 	t.Log(dump(tree))
 }
 
-func TestSimpleWalkFrom(t *testing.T) {
+func TestSimpleWalk(t *testing.T) {
 	rt := New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tornado", "TORNADO")
 
 	count := 0
-	rt.WalkFrom("tomato", func(key string, value interface{}) bool {
+	rt.Walk("tomato", func(key string, value interface{}) bool {
 		count++
 		return false
 	})
@@ -511,7 +511,7 @@ func TestSimpleWalkFrom(t *testing.T) {
 	}
 
 	count = 0
-	rt.WalkFrom("t", func(key string, value interface{}) bool {
+	rt.Walk("t", func(key string, value interface{}) bool {
 		count++
 		return false
 	})
@@ -520,7 +520,7 @@ func TestSimpleWalkFrom(t *testing.T) {
 	}
 
 	count = 0
-	rt.WalkFrom("to", func(key string, value interface{}) bool {
+	rt.Walk("to", func(key string, value interface{}) bool {
 		count++
 		return false
 	})
@@ -529,7 +529,7 @@ func TestSimpleWalkFrom(t *testing.T) {
 	}
 
 	count = 0
-	rt.WalkFrom("tom", func(key string, value interface{}) bool {
+	rt.Walk("tom", func(key string, value interface{}) bool {
 		count++
 		return false
 	})
@@ -538,7 +538,7 @@ func TestSimpleWalkFrom(t *testing.T) {
 	}
 
 	count = 0
-	rt.WalkFrom("tomx", func(key string, value interface{}) bool {
+	rt.Walk("tomx", func(key string, value interface{}) bool {
 		count++
 		return false
 	})
@@ -547,7 +547,7 @@ func TestSimpleWalkFrom(t *testing.T) {
 	}
 
 	count = 0
-	rt.WalkFrom("torn", func(key string, value interface{}) bool {
+	rt.Walk("torn", func(key string, value interface{}) bool {
 		count++
 		return false
 	})
@@ -617,7 +617,7 @@ func TestTree(t *testing.T) {
 	// walk path
 	t.Log(dump(tree))
 	key := "bad/key"
-	tree.WalkTo(key, walkFn)
+	tree.WalkPath(key, walkFn)
 	if len(kvMap) != 0 {
 		t.Error("should not have returned values, got ", kvMap)
 	}
@@ -631,7 +631,7 @@ func TestTree(t *testing.T) {
 	}
 	kvMap = map[string]interface{}{}
 	wvals = nil
-	tree.WalkTo(lastKey, walkFn)
+	tree.WalkPath(lastKey, walkFn)
 	if kvMap[lastKey] == nil {
 		t.Fatalf("expected value for %s", lastKey)
 	}
@@ -794,7 +794,7 @@ func TestWalk(t *testing.T) {
 	}
 
 	for _, notKey := range notKeys {
-		tree.WalkFrom(notKey, walkFn)
+		tree.Walk(notKey, walkFn)
 		if err != nil {
 			t.Error(err)
 		}
@@ -828,7 +828,7 @@ func TestWalk(t *testing.T) {
 	visited = make(map[string]int, len(keys))
 
 	// Walk from root
-	tree.WalkFrom("", walkFn)
+	tree.Walk("", walkFn)
 	if err != nil {
 		t.Error(err)
 	}
@@ -905,7 +905,7 @@ func TestWalk(t *testing.T) {
 
 	visited = make(map[string]int, len(keys))
 
-	tree.WalkFrom("rat", walkFn)
+	tree.Walk("rat", walkFn)
 	if err != nil {
 		t.Errorf("expected error nil, got %v", err)
 	}
@@ -933,7 +933,7 @@ func TestWalk(t *testing.T) {
 		visited[k] = 0
 	}
 
-	tree.WalkFrom("rat/whis/kers", walkFn)
+	tree.Walk("rat/whis/kers", walkFn)
 	if err != nil {
 		t.Errorf("expected error nil, got %v", err)
 	}
@@ -969,7 +969,7 @@ func TestWalk(t *testing.T) {
 		return false
 	}
 
-	tree.WalkTo(testKey, walkPFn)
+	tree.WalkPath(testKey, walkPFn)
 	if err != nil {
 		t.Errorf("expected error nil, got %v", err)
 	}
@@ -982,7 +982,7 @@ func TestWalk(t *testing.T) {
 	for _, k := range keys {
 		visited[k] = 0
 	}
-	tree.WalkTo(testKey, func(key string, value interface{}) bool {
+	tree.WalkPath(testKey, func(key string, value interface{}) bool {
 		pfx := "rat/winks/wryly"
 		if strings.HasPrefix(key, pfx) && len(key) > len(pfx) {
 			return false
@@ -999,7 +999,7 @@ func TestWalk(t *testing.T) {
 	for _, k := range keys {
 		visited[k] = 0
 	}
-	tree.WalkTo(testKey, func(key string, value interface{}) bool {
+	tree.WalkPath(testKey, func(key string, value interface{}) bool {
 		visited[key]++
 		if key == "rat/winks/wryly" {
 			err = fmt.Errorf("error at key %s", key)
@@ -1017,7 +1017,7 @@ func TestWalk(t *testing.T) {
 
 	var foundRoot bool
 	tree.Put("", "ROOT")
-	tree.WalkTo(testKey, func(key string, value interface{}) bool {
+	tree.WalkPath(testKey, func(key string, value interface{}) bool {
 		if key == "" && value == "ROOT" {
 			foundRoot = true
 		}
@@ -1031,7 +1031,7 @@ func TestWalk(t *testing.T) {
 		visited[k] = 0
 	}
 
-	tree.WalkTo(testKey, func(key string, value interface{}) bool {
+	tree.WalkPath(testKey, func(key string, value interface{}) bool {
 		if key == "" && value == "ROOT" {
 			return false
 		}
@@ -1043,7 +1043,7 @@ func TestWalk(t *testing.T) {
 		}
 	}
 
-	tree.WalkTo(testKey, func(key string, value interface{}) bool {
+	tree.WalkPath(testKey, func(key string, value interface{}) bool {
 		if key == "" && value == "ROOT" {
 			err = errors.New("error at root")
 			return true
@@ -1060,7 +1060,7 @@ func TestWalk(t *testing.T) {
 	}
 
 	var lastKey string
-	tree.WalkTo("rat/winks/wisely/x/y/z/w", func(key string, value interface{}) bool {
+	tree.WalkPath("rat/winks/wisely/x/y/z/w", func(key string, value interface{}) bool {
 		lastKey = key
 		return false
 	})
@@ -1117,7 +1117,7 @@ func TestWalkStop(t *testing.T) {
 		walked++
 		return false
 	}
-	tree.WalkFrom("", walkFn)
+	tree.Walk("", walkFn)
 	if err != walkErr {
 		t.Errorf("expected error %v, got %v", walkErr, err)
 	}
@@ -1214,7 +1214,7 @@ func TestStringConvert(t *testing.T) {
 			t.Fatalf("returned wrong value - expected %q got %q", w, s)
 		}
 	}
-	tree.WalkFrom("", func(key string, val interface{}) bool {
+	tree.Walk("", func(key string, val interface{}) bool {
 		t.Log("Key:", key)
 		s, ok := val.(string)
 		if !ok {
@@ -1226,16 +1226,6 @@ func TestStringConvert(t *testing.T) {
 			t.Log(dump(tree))
 			t.Fatal("Key and value do not match")
 		}
-		return false
-	})
-}
-
-func TestDepricated(t *testing.T) {
-	tree := New()
-	tree.Walk("", func(k string, v interface{}) bool {
-		return false
-	})
-	tree.WalkPath("", func(k string, v interface{}) bool {
 		return false
 	})
 }
