@@ -37,7 +37,7 @@ type WalkFunc func(key string, value interface{}) bool
 // of children the node has.
 //
 // If the function returns true Inspect stops immediately and returns.
-type InspectFunc func(prefix, key string, depth, children int, hasValue bool, value interface{}) bool
+type InspectFunc func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool
 
 type leaf struct {
 	key   string
@@ -340,7 +340,7 @@ func (node *radixNode) inspect(link, key string, depth int, inspectFn InspectFun
 		val = node.leaf.value
 		hasVal = true
 	}
-	if inspectFn(node.prefix, key, depth, len(node.edges), hasVal, val) {
+	if inspectFn(link, node.prefix, key, depth, len(node.edges), hasVal, val) {
 		return true
 	}
 	for _, edge := range node.edges {
@@ -394,3 +394,12 @@ func (node *radixNode) delEdge(radix byte) {
 		node.edges = node.edges[:len(node.edges)-1]
 	}
 }
+
+// Deprecated: Bytes is deprecated, use Tree.
+type Bytes = Tree
+
+// Deprecated: WalkPath is deprecated, use WalkTo.
+func (t *Tree) WalkPath(key string, walkFn WalkFunc) { t.WalkTo(key, walkFn) }
+
+// Deprecated: Walk is deprecated, use WalkFrom.
+func (t *Tree) Walk(key string, walkFn WalkFunc) { t.WalkFrom(key, walkFn) }

@@ -1144,7 +1144,7 @@ func TestInspectStop(t *testing.T) {
 		tree.Put(table[i].key, table[i].val)
 	}
 	var keys []string
-	inspectFn := func(prefix, key string, depth, children int, hasValue bool, value interface{}) bool {
+	inspectFn := func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool {
 		if !hasValue {
 			// Do not count internal nodes
 			return false
@@ -1233,21 +1233,14 @@ func TestStringConvert(t *testing.T) {
 // Use the Inspect functionality to create a function to dump the tree.
 func dump(tree *Tree) string {
 	var b strings.Builder
-	tree.Inspect(func(prefix, key string, depth, children int, hasValue bool, value interface{}) bool {
+	tree.Inspect(func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool {
 		for ; depth > 0; depth-- {
 			b.WriteString("  ")
 		}
-		var link, pfx string
-		if len(prefix) > 0 {
-			link = prefix[0:1]
-			if len(prefix) > 1 {
-				pfx = prefix[1:]
-			}
-		}
 		if hasValue {
-			b.WriteString(fmt.Sprintf("%s-> (%q, [%s: %q]) children: %d\n", link, pfx, string(key), value, children))
+			b.WriteString(fmt.Sprintf("%s-> (%q, [%s: %q]) children: %d\n", link, prefix, key, value, children))
 		} else {
-			b.WriteString(fmt.Sprintf("%s-> (%q, [%s])] children: %d\n", link, pfx, string(key), children))
+			b.WriteString(fmt.Sprintf("%s-> (%q, [%s])] children: %d\n", link, prefix, key, children))
 		}
 		return false
 	})
