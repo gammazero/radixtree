@@ -22,3 +22,6 @@ _testmain.go
 *.test
 *.prof
 *.out
+
+web2
+web2a
