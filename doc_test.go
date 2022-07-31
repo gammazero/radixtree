@@ -6,7 +6,7 @@ import (
 	"github.com/gammazero/radixtree"
 )
 
-func Example_WalkFrom() {
+func ExampleTree_WalkFrom() {
 	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
@@ -20,7 +20,7 @@ func Example_WalkFrom() {
 	})
 }
 
-func Example_WalkTo() {
+func ExampleTree_WalkTo() {
 	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
@@ -37,7 +37,7 @@ func Example_WalkTo() {
 	// TOMATO
 }
 
-func Example_NewIterator() {
+func ExampleTree_NewIterator() {
 	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
@@ -60,7 +60,7 @@ func Example_NewIterator() {
 	// tornado = TORNADO
 }
 
-func Example_NewStepper() {
+func ExampleTree_NewStepper() {
 	rt := radixtree.New()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
