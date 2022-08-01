@@ -134,18 +134,17 @@ func benchmarkWalkPath(b *testing.B, filePath string) {
 	}
 	b.ResetTimer()
 	b.ReportAllocs()
-	var count int
 	for n := 0; n < b.N; n++ {
-		count = 0
+		found := false
 		for _, w := range words {
 			tree.WalkPath(w, func(key string, value interface{}) bool {
-				count++
+				found = true
 				return false
 			})
 		}
-	}
-	if count <= len(words) {
-		b.Fatal("wrong count")
+		if !found {
+			b.Fatal("Walk did not find word")
+		}
 	}
 }
 
