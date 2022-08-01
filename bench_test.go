@@ -76,9 +76,10 @@ func benchmarkGet(b *testing.B, filePath string) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
-		word := words[n%len(words)]
-		if _, ok := tree.Get(word); !ok {
-			b.Fatalf("missing value %q", word)
+		for _, w := range words {
+			if _, ok := tree.Get(w); !ok {
+				panic("missing value")
+			}
 		}
 	}
 }
@@ -91,9 +92,10 @@ func benchmarkPut(b *testing.B, filePath string) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
-		tree := new(Tree)
-		word := words[n%len(words)]
-		tree.Put(word, word)
+		tree := new(Bytes)
+		for _, w := range words {
+			tree.Put(w, w)
+		}
 	}
 }
 
@@ -132,20 +134,18 @@ func benchmarkWalkPath(b *testing.B, filePath string) {
 	}
 	b.ResetTimer()
 	b.ReportAllocs()
-	var zeroCount bool
+	var count int
 	for n := 0; n < b.N; n++ {
-		word := words[n%len(words)]
-		count := 0
-		tree.WalkPath(word, func(key string, value interface{}) bool {
-			count++
-			return false
-		})
-		if count == 0 {
-			zeroCount = true
+		count = 0
+		for _, w := range words {
+			tree.WalkPath(w, func(key string, value interface{}) bool {
+				count++
+				return false
+			})
 		}
 	}
-	if zeroCount {
-		b.Fatalf("At least one word was not found by WalkPath")
+	if count <= len(words) {
+		b.Fatal("wrong count")
 	}
 }
 
