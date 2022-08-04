@@ -2,88 +2,74 @@ package radixtree
 
 import (
 	"bufio"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"testing"
 )
 
 const (
-	wordsPath = "/usr/share/dict/words"
-	web2aPath = "/usr/share/dict/web2a"
+	// web2: Webster's Second International Dictionary, all 234,936 words worth.
+	web2URL  = "https://raw.githubusercontent.com/openbsd/src/master/share/dict/web2"
+	web2Path = "web2"
+	// web2a: hyphenated terms as well as assorted noun and adverbial
+	// phrasesfrom Webster's Second International Dictionary.
+	web2aURL  = "https://raw.githubusercontent.com/openbsd/src/master/share/dict/web2a"
+	web2aPath = "web2a"
 )
 
-//
-// Benchmarks
-//
-func BenchmarkWordsBytesGet(b *testing.B) {
-	benchmarkBytesGet(wordsPath, b)
+func BenchmarkGet(b *testing.B) {
+	err := getWords()
+	if err != nil {
+		b.Skip(err.Error())
+	}
+
+	b.Run("Words", func(b *testing.B) {
+		benchmarkGet(b, web2Path)
+	})
+
+	b.Run("Web2a", func(b *testing.B) {
+		benchmarkGet(b, web2aPath)
+	})
 }
 
-func BenchmarkWordsBytesPut(b *testing.B) {
-	benchmarkBytesPut(wordsPath, b)
+func BenchmarkPut(b *testing.B) {
+	b.Run("Words", func(b *testing.B) {
+		benchmarkPut(b, web2Path)
+	})
+
+	b.Run("Web2a", func(b *testing.B) {
+		benchmarkPut(b, web2aPath)
+	})
 }
 
-func BenchmarkWordsBytesWalk(b *testing.B) {
-	benchmarkBytesWalk(wordsPath, b)
+func BenchmarkWalk(b *testing.B) {
+	b.Run("Words", func(b *testing.B) {
+		benchmarkWalk(b, web2Path)
+	})
+
+	b.Run("Web2a", func(b *testing.B) {
+		benchmarkWalk(b, web2aPath)
+	})
 }
 
-func BenchmarkWordsBytesWalkPath(b *testing.B) {
-	benchmarkBytesWalkPath(wordsPath, b)
+func BenchmarkWalkPath(b *testing.B) {
+	b.Run("Words", func(b *testing.B) {
+		benchmarkWalkPath(b, web2Path)
+	})
+
+	b.Run("Web2a", func(b *testing.B) {
+		benchmarkWalkPath(b, web2aPath)
+	})
 }
 
-// ----- Web2a -----
-func BenchmarkWeb2aBytesGet(b *testing.B) {
-	benchmarkBytesGet(web2aPath, b)
-}
-
-func BenchmarkWeb2aBytesPut(b *testing.B) {
-	benchmarkBytesPut(web2aPath, b)
-}
-
-func BenchmarkWeb2aBytesWalk(b *testing.B) {
-	benchmarkBytesWalk(web2aPath, b)
-}
-
-func BenchmarkWeb2aBytesWalkPath(b *testing.B) {
-	benchmarkBytesWalkPath(web2aPath, b)
-}
-
-func BenchmarkWeb2aPathsPut(b *testing.B) {
-	benchmarkPathsPut(web2aPath, b)
-}
-
-func BenchmarkWeb2aPathsGet(b *testing.B) {
-	benchmarkPathsGet(web2aPath, b)
-}
-
-func BenchmarkWeb2aPathsWalk(b *testing.B) {
-	benchmarkPathsWalk(web2aPath, b)
-}
-
-func BenchmarkWeb2aPathsWalkPath(b *testing.B) {
-	benchmarkPathsWalkPath(web2aPath, b)
-}
-
-func benchmarkBytesPut(filePath string, b *testing.B) {
+func benchmarkGet(b *testing.B, filePath string) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
 	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		tree := new(Bytes)
-		for _, w := range words {
-			tree.Put(w, w)
-		}
-	}
-}
-
-func benchmarkBytesGet(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	tree := new(Bytes)
+	tree := new(Tree)
 	for _, w := range words {
 		tree.Put(w, w)
 	}
@@ -98,12 +84,27 @@ func benchmarkBytesGet(filePath string, b *testing.B) {
 	}
 }
 
-func benchmarkBytesWalk(filePath string, b *testing.B) {
+func benchmarkPut(b *testing.B, filePath string) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
 	}
-	tree := new(Bytes)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for n := 0; n < b.N; n++ {
+		tree := new(Bytes)
+		for _, w := range words {
+			tree.Put(w, w)
+		}
+	}
+}
+
+func benchmarkWalk(b *testing.B, filePath string) {
+	words, err := loadWords(filePath)
+	if err != nil {
+		b.Skip(err.Error())
+	}
+	tree := new(Tree)
 	for _, w := range words {
 		tree.Put(w, w)
 	}
@@ -118,115 +119,31 @@ func benchmarkBytesWalk(filePath string, b *testing.B) {
 		})
 	}
 	if count != len(words) {
-		panic("wrong count")
+		b.Fatalf("Walk wrong count, expected %d got %d", len(words), count)
 	}
 }
 
-func benchmarkBytesWalkPath(filePath string, b *testing.B) {
+func benchmarkWalkPath(b *testing.B, filePath string) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
 	}
-	tree := new(Bytes)
+	tree := new(Tree)
 	for _, w := range words {
 		tree.Put(w, w)
 	}
 	b.ResetTimer()
 	b.ReportAllocs()
-	var count int
 	for n := 0; n < b.N; n++ {
-		count = 0
+		found := false
 		for _, w := range words {
 			tree.WalkPath(w, func(key string, value interface{}) bool {
-				count++
+				found = true
 				return false
 			})
 		}
-	}
-	if count <= len(words) {
-		panic("wrong count")
-	}
-}
-
-func benchmarkPathsPut(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		tree := new(Paths)
-		for _, w := range words {
-			tree.Put(w, w)
-		}
-	}
-}
-
-func benchmarkPathsGet(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	tree := new(Paths)
-	for _, w := range words {
-		tree.Put(w, w)
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		for _, w := range words {
-			tree.Get(w)
-		}
-	}
-}
-
-func benchmarkPathsWalk(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	tree := new(Paths)
-	for _, w := range words {
-		tree.Put(w, w)
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	var count int
-	for n := 0; n < b.N; n++ {
-		count = 0
-		tree.Walk("", func(k string, value interface{}) bool {
-			count++
-			return false
-		})
-		if count != len(words) {
-			panic("wrong count")
-		}
-	}
-}
-
-func benchmarkPathsWalkPath(filePath string, b *testing.B) {
-	words, err := loadWords(filePath)
-	if err != nil {
-		b.Skip(err.Error())
-	}
-	tree := new(Paths)
-	for _, w := range words {
-		tree.Put(w, w)
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	var count int
-	for n := 0; n < b.N; n++ {
-		count = 0
-		for _, w := range words {
-			tree.WalkPath(w, func(key string, value interface{}) bool {
-				count++
-				return false
-			})
-		}
-		if count < len(words) {
-			panic("wrong count")
+		if !found {
+			b.Fatal("Walk did not find word")
 		}
 	}
 }
@@ -239,13 +156,11 @@ func loadWords(wordsFile string) ([]string, error) {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
-	var word string
 	var words []string
 
 	// Scan through line-dilimited words.
 	for scanner.Scan() {
-		word = scanner.Text()
-		words = append(words, word)
+		words = append(words, scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -253,4 +168,37 @@ func loadWords(wordsFile string) ([]string, error) {
 	}
 
 	return words, nil
+}
+
+func getWords() error {
+	err := downloadFile(web2URL, web2Path)
+	if err != nil {
+		return err
+	}
+	return downloadFile(web2aURL, web2aPath)
+}
+
+func downloadFile(fileURL, filePath string) error {
+	_, err := os.Stat(filePath)
+	if err == nil {
+		return nil
+	}
+	rsp, err := http.Get(fileURL)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	if rsp.StatusCode != 200 {
+		return fmt.Errorf("error response getting file: %d", rsp.StatusCode)
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, rsp.Body)
+	return err
 }
