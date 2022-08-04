@@ -6,24 +6,19 @@
 [![codecov](https://codecov.io/gh/gammazero/radixtree/branch/master/graph/badge.svg)](https://codecov.io/gh/gammazero/radixtree)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Package `radixtree` implements an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or prefix tree. It is adaptive in the sense that nodes are not constant size, having as few or many children as needed to branch to all subtrees.
-
-This package implements a radix-256 tree where each key symbol (radix) is a byte, allowing up to 256 possible branches to traverse to the next node.
-
-The implementation is optimized for Get performance and allocates 0 bytes of heap memory per Get; therefore no garbage to collect. Once the radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the radixtree. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
-
 Package `radixtree` implements an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree.  This data structure is useful to quickly lookup data by key, find values whose keys have a common prefix, or find values whose keys are a prefix (i.e. found along the way) of a search key.
+
+It is adaptive in the sense that nodes are not constant size, having only as many children, up to the maximum, as needed to branch to all subtrees. This package implements a radix-256 tree where each key symbol (radix) is a byte, allowing up to 256 possible branches to traverse to the next node.
 
 The implementation is optimized for Get performance and allocate 0 bytes of heap memory for any read operation (Get, Walk, WalkPath, etc.); therefore no garbage to collect.  Once a radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the data structure. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
 
 This radix tree offers the following features:
 
 - Efficient: Operations are O(k). Zero memory allocation for all read operations.
-- Compact: When values are stored using keys that have a common prefix, the common part of the key is only stored once. Consider this when keys are similar to a timestamp, OID, filepath, geohash, network address, etc. Only the minimum number of nodes are kept to branch at the points where keys differ.
-- Adaptive: This radix tree is adaptive in the sense that nodes are not constant size, having only as many children that are needed. This is radix-256 tree where each key symbol (radix) is a byte, allowing from zero up to 256 branches to traverse to the next node.
-- Iterator: An `Iterator` returns each key-value pair in the tree. A `Stepper` type of iterator traverses the tree one specified byte at a time. It is useful for incremental lookup, and can be copied in order to branch a search and iterate the copies concurrently.
-- Able to store nil values: Get differentiates between nil value and missing value.
 - Ordered iteration: Walking and iterating the tree is done in lexical order, making the output deterministic.
+- Store `nil` values: Read operations differentiate between missing and `nil` values.
+- Compact: When values are stored using keys that have a common prefix, the common part of the key is only stored once. Consider this when keys are similar to a timestamp, OID, filepath, geohash, network address, etc. Only the minimum number of nodes are kept to branch at the points where keys differ.
+- Iterators: An `Iterator` type walks every key-value pair stored in the tree. A `Stepper` type of iterator traverses the tree one specified byte at a time, and is useful for incremental lookup. A Stepper can be copied in order to branch a search and iterate the copies concurrently.
 
 ## Install
 
