@@ -3,15 +3,15 @@ package radixtree
 // Stepper traverses a Tree one byte at a time.
 //
 // Any modification to the tree invalidates the Stepper.
-type Stepper struct {
+type Stepper[V any] struct {
 	p    int
-	node *radixNode
+	node *radixNode[V]
 }
 
 // NewStepper returns a new Stepper instance that begins at the root of the
 // tree.
-func (t *Tree) NewStepper() *Stepper {
-	return &Stepper{
+func (t *Tree[V]) NewStepper() *Stepper[V] {
+	return &Stepper[V]{
 		node: &t.root,
 	}
 }
@@ -19,8 +19,8 @@ func (t *Tree) NewStepper() *Stepper {
 // Copy makes a copy of the current Stepper. This allows branching a Stepper
 // into two that can take separate paths. These Steppers do not affect each
 // other and can be used concurrently.
-func (s *Stepper) Copy() *Stepper {
-	return &Stepper{
+func (s *Stepper[V]) Copy() *Stepper[V] {
+	return &Stepper[V]{
 		p:    s.p,
 		node: s.node,
 	}
@@ -33,7 +33,7 @@ func (s *Stepper) Copy() *Stepper {
 //
 // When false is returned the Stepper is not modified. This allows different
 // values to be used in subsequent calls to Next.
-func (s *Stepper) Next(radix byte) bool {
+func (s *Stepper[V]) Next(radix byte) bool {
 	// The tree.prefix represents single-edge parents without values that were
 	// compressed out of the tree. Let prefix consume key symbols.
 	if s.p < len(s.node.prefix) {
@@ -58,14 +58,15 @@ func (s *Stepper) Next(radix byte) bool {
 
 // Value returns the value at the current Stepper position, and true or false
 // to indicate if a value is present at the position.
-func (s *Stepper) Value() (interface{}, bool) {
+func (s *Stepper[V]) Value() (V, bool) {
+	var zeroV V
 	// Only return value if all of this node's prefix was matched.  Otherwise,
 	// have not fully traversed into this node (edge not completely traversed).
 	if s.p != len(s.node.prefix) {
-		return nil, false
+		return zeroV, false
 	}
 	if s.node.leaf == nil {
-		return nil, false
+		return zeroV, false
 	}
 	return s.node.leaf.value, true
 }

@@ -8,7 +8,7 @@ import (
 )
 
 func TestAddEnd(t *testing.T) {
-	rt := new(Tree)
+	rt := New()
 	rt.Put("tomato", "TOMATO")
 	if len(rt.root.edges) != 1 {
 		t.Fatal("root should have 1 child")
@@ -74,7 +74,7 @@ func TestAddEnd(t *testing.T) {
 }
 
 func TestAddFront(t *testing.T) {
-	rt := new(Tree)
+	rt := New()
 	rt.Put("tom", "TOM")
 	t.Log(dump(rt))
 	// (root) t-> ("om", TOM)
@@ -121,7 +121,7 @@ func TestAddFront(t *testing.T) {
 }
 
 func TestAddBranch(t *testing.T) {
-	rt := new(Tree)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 
@@ -200,7 +200,7 @@ func TestAddBranch(t *testing.T) {
 }
 
 func TestAddBranchToBranch(t *testing.T) {
-	rt := new(Tree)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -256,7 +256,7 @@ func TestAddBranchToBranch(t *testing.T) {
 }
 
 func TestAddExisting(t *testing.T) {
-	rt := new(Tree)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -318,7 +318,7 @@ func TestAddExisting(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	rt := new(Tree)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -358,7 +358,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestBuildEdgeCases(t *testing.T) {
-	tree := new(Tree)
+	tree := New()
 
 	tree.Put("ABCD", 1)
 	t.Log(dump(tree))
@@ -846,7 +846,7 @@ func TestWalk(t *testing.T) {
 
 	visited = make(map[string]int, len(keys))
 
-	var iterCopy *Iterator
+	var iterCopy *Iterator[any]
 	iter := tree.NewIterator()
 	for {
 		key, val, done := iter.Next()
@@ -1231,7 +1231,7 @@ func TestStringConvert(t *testing.T) {
 }
 
 // Use the Inspect functionality to create a function to dump the tree.
-func dump(tree *Tree) string {
+func dump(tree *Tree[any]) string {
 	var b strings.Builder
 	tree.Inspect(func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool {
 		for ; depth > 0; depth-- {

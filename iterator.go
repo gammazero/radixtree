@@ -5,29 +5,29 @@ package radixtree
 // Is is safe to use different Iterator instances concurrently. Any
 // modification to the Tree that the Iterator was created from invalidates the
 // Iterator instance.
-type Iterator struct {
-	nodes []*radixNode
+type Iterator[V any] struct {
+	nodes []*radixNode[V]
 }
 
 // NewIterator returns a new Iterator.
-func (t *Tree) NewIterator() *Iterator {
-	return &Iterator{
-		nodes: []*radixNode{&t.root},
+func (t *Tree[V]) NewIterator() *Iterator[V] {
+	return &Iterator[V]{
+		nodes: []*radixNode[V]{&t.root},
 	}
 }
 
 // Copy creates a new Iterator at this iterator's state of iteration.
-func (it *Iterator) Copy() *Iterator {
-	nodes := make([]*radixNode, len(it.nodes))
+func (it *Iterator[V]) Copy() *Iterator[V] {
+	nodes := make([]*radixNode[V], len(it.nodes))
 	copy(nodes, it.nodes)
-	return &Iterator{
+	return &Iterator[V]{
 		nodes: nodes,
 	}
 }
 
 // Next returns the next key and value stored in the Tree, and true when
 // iteration is complete.
-func (it *Iterator) Next() (key string, value interface{}, done bool) {
+func (it *Iterator[V]) Next() (key string, value V, done bool) {
 	for {
 		if len(it.nodes) == 0 {
 			break
@@ -43,5 +43,6 @@ func (it *Iterator) Next() (key string, value interface{}, done bool) {
 			return node.leaf.key, node.leaf.value, false
 		}
 	}
-	return "", nil, true
+	var zeroV V
+	return "", zeroV, true
 }

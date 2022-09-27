@@ -4,23 +4,27 @@ import (
 	"strings"
 )
 
-// Tree is a radix tree of bytes keys and interface{} values.
-type Tree struct {
-	root radixNode
+// Tree is a radix tree of bytes keys and V values.
+type Tree[V any] struct {
+	root radixNode[V]
 	size int
 }
 
 // New creates a new bytes-based radix tree
-func New() *Tree {
-	return new(Tree)
+func New() *Tree[any] {
+	return new(Tree[any])
 }
 
-type radixNode struct {
+func NewOf[V any]() *Tree[V] {
+	return new(Tree[V])
+}
+
+type radixNode[V any] struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
 	prefix string
-	edges  []edge
-	leaf   *leaf
+	edges  []edge[V]
+	leaf   *leaf[V]
 }
 
 // WalkFunc is the type of the function called for each value visited by Walk
@@ -29,7 +33,7 @@ type radixNode struct {
 //
 // If the function returns true Walk stops immediately and returns. This
 // applies to WalkPath as well.
-type WalkFunc func(key string, value interface{}) bool
+type WalkFunc[V any] func(key string, value V) bool
 
 // InspectFunc is the type of the function called for each node visited by
 // Inspect. The key argument contains the key at which the node is located, the
@@ -37,26 +41,27 @@ type WalkFunc func(key string, value interface{}) bool
 // of children the node has.
 //
 // If the function returns true Inspect stops immediately and returns.
-type InspectFunc func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool
+type InspectFunc[V any] func(link, prefix, key string, depth, children int, hasValue bool, value V) bool
 
-type leaf struct {
+type leaf[V any] struct {
 	key   string
-	value interface{}
+	value V
 }
 
-type edge struct {
+type edge[V any] struct {
 	radix byte
-	node  *radixNode
+	node  *radixNode[V]
 }
 
 // Len returns the number of values stored in the tree.
-func (t *Tree) Len() int {
+func (t *Tree[V]) Len() int {
 	return t.size
 }
 
 // Get returns the value stored at the given key. Returns false if there is no
 // value present for the key.
-func (t *Tree) Get(key string) (interface{}, bool) {
+func (t *Tree[V]) Get(key string) (V, bool) {
+	var zeroV V
 	node := &t.root
 	// Consume key data while mathcing edge and prefix; return if remaining key
 	// data matches nothing.
@@ -64,30 +69,30 @@ func (t *Tree) Get(key string) (interface{}, bool) {
 		// Find edge for radix.
 		node = node.getEdge(key[0])
 		if node == nil {
-			return nil, false
+			return zeroV, false
 		}
 
 		// Consume key data.
 		key = key[1:]
 		if !strings.HasPrefix(key, node.prefix) {
-			return nil, false
+			return zeroV, false
 		}
 		key = key[len(node.prefix):]
 	}
 	if node.leaf != nil {
 		return node.leaf.value, true
 	}
-	return nil, false
+	return zeroV, false
 }
 
 // Put inserts the value into the tree at the given key, replacing any existing
 // items. It returns true if it adds a new value, false if it replaces an
 // existing value.
-func (t *Tree) Put(key string, value interface{}) bool {
+func (t *Tree[V]) Put(key string, value V) bool {
 	var (
 		p          int
 		isNewValue bool
-		newEdge    edge
+		newEdge    edge[V]
 		hasNewEdge bool
 	)
 	node := &t.root
@@ -107,8 +112,8 @@ func (t *Tree) Put(key string, value interface{}) bool {
 		// Descended as far as prefixes and edges match key, and still have key
 		// data, so add child that has a prefix of the unmatched key data and
 		// set its value to the new value.
-		newChild := &radixNode{
-			leaf: &leaf{
+		newChild := &radixNode[V]{
+			leaf: &leaf[V]{
 				key:   key,
 				value: value,
 			},
@@ -116,7 +121,7 @@ func (t *Tree) Put(key string, value interface{}) bool {
 		if i < len(key)-1 {
 			newChild.prefix = key[i+1:]
 		}
-		newEdge = edge{radix, newChild}
+		newEdge = edge[V]{radix, newChild}
 		hasNewEdge = true
 		break
 	}
@@ -139,7 +144,7 @@ func (t *Tree) Put(key string, value interface{}) bool {
 			isNewValue = true
 			t.size++
 		}
-		node.leaf = &leaf{
+		node.leaf = &leaf[V]{
 			key:   key,
 			value: value,
 		}
@@ -151,10 +156,10 @@ func (t *Tree) Put(key string, value interface{}) bool {
 // Delete removes the value associated with the given key. Returns true if
 // there was a value stored for the key. If the node or any of its ancestors
 // becomes childless as a result, they are removed from the tree.
-func (t *Tree) Delete(key string) bool {
+func (t *Tree[V]) Delete(key string) bool {
 	node := &t.root
 	var (
-		parents []*radixNode
+		parents []*radixNode[V]
 		links   []byte
 	)
 	for len(key) != 0 {
@@ -200,7 +205,7 @@ func (t *Tree) Delete(key string) bool {
 // Use empty key "" to visit all nodes starting from the root or the Tree.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree) Walk(key string, walkFn WalkFunc) {
+func (t *Tree[V]) Walk(key string, walkFn WalkFunc[V]) {
 	node := &t.root
 	for len(key) != 0 {
 		if node = node.getEdge(key[0]); node == nil {
@@ -227,7 +232,7 @@ func (t *Tree) Walk(key string, walkFn WalkFunc) {
 // true, WalkPath returns.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree) WalkPath(key string, walkFn WalkFunc) {
+func (t *Tree[V]) WalkPath(key string, walkFn WalkFunc[V]) {
 	node := &t.root
 	for {
 		if node.leaf != nil && walkFn(node.leaf.key, node.leaf.value) {
@@ -258,16 +263,19 @@ func (t *Tree) WalkPath(key string, walkFn WalkFunc) {
 // If inspectFn returns false, the traversal is stopped and Inspect returns.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree) Inspect(inspectFn InspectFunc) {
+func (t *Tree[V]) Inspect(inspectFn InspectFunc[V]) {
 	t.root.inspect("", "", 0, inspectFn)
 }
 
 // split splits a node such that a node:
-//     ("prefix", leaf, edges[])
+//
+//	("prefix", leaf, edges[])
+//
 // is split into parent branching node, and a child leaf node:
-//     ("pre", nil, edges[f])--->("ix", leaf, edges[])
-func (node *radixNode) split(p int) {
-	split := &radixNode{
+//
+//	("pre", nil, edges[f])--->("ix", leaf, edges[])
+func (node *radixNode[V]) split(p int) {
+	split := &radixNode[V]{
 		edges: node.edges,
 		leaf:  node.leaf,
 	}
@@ -275,7 +283,7 @@ func (node *radixNode) split(p int) {
 		split.prefix = node.prefix[p+1:]
 	}
 	node.edges = nil
-	node.addEdge(edge{node.prefix[p], split})
+	node.addEdge(edge[V]{node.prefix[p], split})
 	if p == 0 {
 		node.prefix = ""
 	} else {
@@ -284,7 +292,7 @@ func (node *radixNode) split(p int) {
 	node.leaf = nil
 }
 
-func (node *radixNode) prune(parents []*radixNode, links []byte) *radixNode {
+func (node *radixNode[V]) prune(parents []*radixNode[V], links []byte) *radixNode[V] {
 	if node.edges != nil {
 		return node
 	}
@@ -305,7 +313,7 @@ func (node *radixNode) prune(parents []*radixNode, links []byte) *radixNode {
 	return node
 }
 
-func (node *radixNode) compress() {
+func (node *radixNode[V]) compress() {
 	if len(node.edges) != 1 || node.leaf != nil {
 		return
 	}
@@ -320,7 +328,7 @@ func (node *radixNode) compress() {
 	node.edges = edge.node.edges
 }
 
-func (node *radixNode) walk(walkFn WalkFunc) bool {
+func (node *radixNode[V]) walk(walkFn WalkFunc[V]) bool {
 	if node.leaf != nil && walkFn(node.leaf.key, node.leaf.value) {
 		return true
 	}
@@ -332,9 +340,9 @@ func (node *radixNode) walk(walkFn WalkFunc) bool {
 	return false
 }
 
-func (node *radixNode) inspect(link, key string, depth int, inspectFn InspectFunc) bool {
+func (node *radixNode[V]) inspect(link, key string, depth int, inspectFn InspectFunc[V]) bool {
 	key += link + node.prefix
-	var val interface{}
+	var val V
 	var hasVal bool
 	if node.leaf != nil {
 		val = node.leaf.value
@@ -354,7 +362,7 @@ func (node *radixNode) inspect(link, key string, depth int, inspectFn InspectFun
 // indexEdge binary searches for the edge index.
 //
 // This is faster then going through sort.Interface for repeated searches.
-func (node *radixNode) indexEdge(radix byte) int {
+func (node *radixNode[V]) indexEdge(radix byte) int {
 	n := len(node.edges)
 	i, j := 0, n
 	for i < j {
@@ -369,7 +377,7 @@ func (node *radixNode) indexEdge(radix byte) int {
 }
 
 // getEdge binary searches for edge.
-func (node *radixNode) getEdge(radix byte) *radixNode {
+func (node *radixNode[V]) getEdge(radix byte) *radixNode[V] {
 	idx := node.indexEdge(radix)
 	if idx < len(node.edges) && node.edges[idx].radix == radix {
 		return node.edges[idx].node
@@ -378,22 +386,22 @@ func (node *radixNode) getEdge(radix byte) *radixNode {
 }
 
 // addEdge binary searches to find where to insert edge, and inserts at.
-func (node *radixNode) addEdge(e edge) {
+func (node *radixNode[V]) addEdge(e edge[V]) {
 	idx := node.indexEdge(e.radix)
-	node.edges = append(node.edges, edge{})
+	node.edges = append(node.edges, edge[V]{})
 	copy(node.edges[idx+1:], node.edges[idx:])
 	node.edges[idx] = e
 }
 
 // delEdge binary searches for edge and removes it.
-func (node *radixNode) delEdge(radix byte) {
+func (node *radixNode[V]) delEdge(radix byte) {
 	idx := node.indexEdge(radix)
 	if idx < len(node.edges) && node.edges[idx].radix == radix {
 		copy(node.edges[idx:], node.edges[idx+1:])
-		node.edges[len(node.edges)-1] = edge{}
+		node.edges[len(node.edges)-1] = edge[V]{}
 		node.edges = node.edges[:len(node.edges)-1]
 	}
 }
 
 // Deprecated: Bytes is deprecated, use Tree.
-type Bytes = Tree
+type Bytes = Tree[any]

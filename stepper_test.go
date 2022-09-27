@@ -5,7 +5,7 @@ import (
 )
 
 func TestStepper(t *testing.T) {
-	rt := new(Tree)
+	rt := New()
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")

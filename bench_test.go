@@ -69,7 +69,7 @@ func benchmarkGet(b *testing.B, filePath string) {
 	if err != nil {
 		b.Skip(err.Error())
 	}
-	tree := new(Tree)
+	tree := New()
 	for _, w := range words {
 		tree.Put(w, w)
 	}
@@ -104,7 +104,7 @@ func benchmarkWalk(b *testing.B, filePath string) {
 	if err != nil {
 		b.Skip(err.Error())
 	}
-	tree := new(Tree)
+	tree := New()
 	for _, w := range words {
 		tree.Put(w, w)
 	}
@@ -128,7 +128,7 @@ func benchmarkWalkPath(b *testing.B, filePath string) {
 	if err != nil {
 		b.Skip(err.Error())
 	}
-	tree := new(Tree)
+	tree := New()
 	for _, w := range words {
 		tree.Put(w, w)
 	}
