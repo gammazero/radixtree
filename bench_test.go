@@ -92,7 +92,7 @@ func benchmarkPut(b *testing.B, filePath string) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
-		tree := new(Bytes)
+		tree := new(Tree)
 		for _, w := range words {
 			tree.Put(w, w)
 		}
@@ -113,7 +113,7 @@ func benchmarkWalk(b *testing.B, filePath string) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		tree.Walk("", func(k string, value interface{}) bool {
+		tree.Walk("", func(k string, value any) bool {
 			count++
 			return false
 		})
@@ -137,7 +137,7 @@ func benchmarkWalkPath(b *testing.B, filePath string) {
 	for n := 0; n < b.N; n++ {
 		found := false
 		for _, w := range words {
-			tree.WalkPath(w, func(key string, value interface{}) bool {
+			tree.WalkPath(w, func(key string, value any) bool {
 				found = true
 				return false
 			})

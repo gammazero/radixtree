@@ -27,7 +27,7 @@ func (it *Iterator) Copy() *Iterator {
 
 // Next returns the next key and value stored in the Tree, and true when
 // iteration is complete.
-func (it *Iterator) Next() (key string, value interface{}, done bool) {
+func (it *Iterator) Next() (key string, value any, done bool) {
 	for {
 		if len(it.nodes) == 0 {
 			break
