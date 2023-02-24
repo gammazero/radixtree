@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// Tree is a radix tree of bytes keys and interface{} values.
+// Tree is a radix tree of bytes keys and any values.
 type Tree struct {
 	root radixNode
 	size int
@@ -29,7 +29,7 @@ type radixNode struct {
 //
 // If the function returns true Walk stops immediately and returns. This
 // applies to WalkPath as well.
-type WalkFunc func(key string, value interface{}) bool
+type WalkFunc func(key string, value any) bool
 
 // InspectFunc is the type of the function called for each node visited by
 // Inspect. The key argument contains the key at which the node is located, the
@@ -37,11 +37,11 @@ type WalkFunc func(key string, value interface{}) bool
 // of children the node has.
 //
 // If the function returns true Inspect stops immediately and returns.
-type InspectFunc func(link, prefix, key string, depth, children int, hasValue bool, value interface{}) bool
+type InspectFunc func(link, prefix, key string, depth, children int, hasValue bool, value any) bool
 
 type leaf struct {
 	key   string
-	value interface{}
+	value any
 }
 
 type edge struct {
@@ -56,7 +56,7 @@ func (t *Tree) Len() int {
 
 // Get returns the value stored at the given key. Returns false if there is no
 // value present for the key.
-func (t *Tree) Get(key string) (interface{}, bool) {
+func (t *Tree) Get(key string) (any, bool) {
 	node := &t.root
 	// Consume key data while mathcing edge and prefix; return if remaining key
 	// data matches nothing.
@@ -83,7 +83,7 @@ func (t *Tree) Get(key string) (interface{}, bool) {
 // Put inserts the value into the tree at the given key, replacing any existing
 // items. It returns true if it adds a new value, false if it replaces an
 // existing value.
-func (t *Tree) Put(key string, value interface{}) bool {
+func (t *Tree) Put(key string, value any) bool {
 	var (
 		p          int
 		isNewValue bool
@@ -176,13 +176,13 @@ func (t *Tree) Delete(key string) bool {
 		key = key[len(node.prefix):]
 	}
 
-	var deleted bool
-	if node.leaf != nil {
-		// delete the node value, indicate that value was deleted.
-		node.leaf = nil
-		deleted = true
-		t.size--
+	if node.leaf == nil {
+		return false
 	}
+
+	// delete the node value, indicate that value was deleted.
+	node.leaf = nil
+	t.size--
 
 	// If node is leaf, remove from parent. If parent becomes leaf, repeat.
 	node = node.prune(parents, links)
@@ -192,7 +192,62 @@ func (t *Tree) Delete(key string) bool {
 		node.compress()
 	}
 
-	return deleted
+	return true
+}
+
+// DeletePrefix removes all values whose key is prefixed by the given prefix.
+// Returns true if any values were removed.
+func (t *Tree) DeletePrefix(prefix string) bool {
+	node := &t.root
+	var (
+		parents []*radixNode
+		links   []byte
+	)
+	for len(prefix) != 0 {
+		parents = append(parents, node)
+
+		// Find edge for radix.
+		node = node.getEdge(prefix[0])
+		if node == nil {
+			// Node does not exist.
+			return false
+		}
+		links = append(links, prefix[0])
+
+		// Consume prefix.
+		prefix = prefix[1:]
+		if !strings.HasPrefix(prefix, node.prefix) {
+			if strings.HasPrefix(node.prefix, prefix) {
+				// Prefix consumed, so it prefixes every key from node down.
+				break
+			}
+			return false
+		}
+		prefix = prefix[len(node.prefix):]
+	}
+
+	if node.edges != nil {
+		var count int
+		node.walk(func(k string, _ any) bool {
+			count++
+			return false
+		})
+		t.size -= count
+		node.edges = nil
+	} else {
+		t.size--
+	}
+	node.leaf = nil
+
+	// If node is leaf, remove from parent. If parent becomes leaf, repeat.
+	node = node.prune(parents, links)
+
+	// If node has become compressible, compress it.
+	if node != &t.root {
+		node.compress()
+	}
+
+	return true
 }
 
 // Walk visits all nodes whose keys match or are prefixed by the specified key,
@@ -263,9 +318,12 @@ func (t *Tree) Inspect(inspectFn InspectFunc) {
 }
 
 // split splits a node such that a node:
-//     ("prefix", leaf, edges[])
+//
+//	("prefix", leaf, edges[])
+//
 // is split into parent branching node, and a child leaf node:
-//     ("pre", nil, edges[f])--->("ix", leaf, edges[])
+//
+//	("pre", nil, edges[f])--->("ix", leaf, edges[])
 func (node *radixNode) split(p int) {
 	split := &radixNode{
 		edges: node.edges,
@@ -334,7 +392,7 @@ func (node *radixNode) walk(walkFn WalkFunc) bool {
 
 func (node *radixNode) inspect(link, key string, depth int, inspectFn InspectFunc) bool {
 	key += link + node.prefix
-	var val interface{}
+	var val any
 	var hasVal bool
 	if node.leaf != nil {
 		val = node.leaf.value
@@ -394,6 +452,3 @@ func (node *radixNode) delEdge(radix byte) {
 		node.edges = node.edges[:len(node.edges)-1]
 	}
 }
-
-// Deprecated: Bytes is deprecated, use Tree.
-type Bytes = Tree

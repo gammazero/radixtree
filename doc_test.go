@@ -14,7 +14,7 @@ func ExampleTree_Walk() {
 	rt.Put("tornado", "TORNADO")
 
 	// Find all items whose keys start with "tom"
-	rt.Walk("tom", func(key string, value interface{}) bool {
+	rt.Walk("tom", func(key string, value any) bool {
 		fmt.Println(value)
 		return false
 	})
@@ -28,7 +28,7 @@ func ExampleTree_WalkPath() {
 	rt.Put("tornado", "TORNADO")
 
 	// Find all items that are a prefix of "tomato"
-	rt.WalkPath("tomato", func(key string, value interface{}) bool {
+	rt.WalkPath("tomato", func(key string, value any) bool {
 		fmt.Println(value)
 		return false
 	})

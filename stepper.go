@@ -58,7 +58,7 @@ func (s *Stepper) Next(radix byte) bool {
 
 // Value returns the value at the current Stepper position, and true or false
 // to indicate if a value is present at the position.
-func (s *Stepper) Value() (interface{}, bool) {
+func (s *Stepper) Value() (any, bool) {
 	// Only return value if all of this node's prefix was matched.  Otherwise,
 	// have not fully traversed into this node (edge not completely traversed).
 	if s.p != len(s.node.prefix) {
