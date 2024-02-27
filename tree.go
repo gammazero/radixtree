@@ -20,7 +20,7 @@ type radixNode struct {
 	// segment used in the parent to index this child.
 	prefix string
 	edges  []edge
-	leaf   *leaf
+	leaf   *Item
 }
 
 // WalkFunc is the type of the function called for each value visited by Walk
@@ -39,10 +39,13 @@ type WalkFunc func(key string, value any) bool
 // If the function returns true Inspect stops immediately and returns.
 type InspectFunc func(link, prefix, key string, depth, children int, hasValue bool, value any) bool
 
-type leaf struct {
+type Item struct {
 	key   string
 	value any
 }
+
+func (kv *Item) Key() string { return kv.key }
+func (kv *Item) Value() any  { return kv.value }
 
 type edge struct {
 	radix byte
@@ -108,7 +111,7 @@ func (t *Tree) Put(key string, value any) bool {
 		// data, so add child that has a prefix of the unmatched key data and
 		// set its value to the new value.
 		newChild := &radixNode{
-			leaf: &leaf{
+			leaf: &Item{
 				key:   key,
 				value: value,
 			},
@@ -139,7 +142,7 @@ func (t *Tree) Put(key string, value any) bool {
 			isNewValue = true
 			t.size++
 		}
-		node.leaf = &leaf{
+		node.leaf = &Item{
 			key:   key,
 			value: value,
 		}

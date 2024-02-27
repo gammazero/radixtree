@@ -24,6 +24,10 @@ func TestStepper(t *testing.T) {
 	if ok || val != nil {
 		t.Fatal("should not have value at 't'")
 	}
+	item := iter.Item()
+	if item != nil {
+		t.Fatal("should not have item at 't'")
+	}
 	if !iter.Next('o') {
 		t.Fatal("'o' should have advanced iterator")
 	}
@@ -43,6 +47,13 @@ func TestStepper(t *testing.T) {
 	val, ok = iter.Value()
 	if !ok || val != "TOM" {
 		t.Fatalf("expected \"TOM\" at 'm', got %q", val)
+	}
+	item = iter.Item()
+	if item == nil || item.Value() != "TOM" {
+		t.Fatalf("expected value \"TOM\" at 'm'")
+	}
+	if item.Key() != "tom" {
+		t.Fatalf("expected key \"tom\" at 'm'")
 	}
 	if !iter.Next('a') {
 		t.Fatal("'a' should have advanced iterator")

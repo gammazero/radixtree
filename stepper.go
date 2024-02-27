@@ -56,16 +56,23 @@ func (s *Stepper) Next(radix byte) bool {
 	return true
 }
 
+// Item returns an Item containing the key and value at the current Stepper
+// position, or returns nil if no value is present at the position.
+func (s *Stepper) Item() *Item {
+	// Only return item if all of this node's prefix was matched. Otherwise,
+	// have not fully traversed into this node (edge not completely traversed).
+	if s.p == len(s.node.prefix) {
+		return s.node.leaf
+	}
+	return nil
+}
+
 // Value returns the value at the current Stepper position, and true or false
 // to indicate if a value is present at the position.
 func (s *Stepper) Value() (any, bool) {
-	// Only return value if all of this node's prefix was matched.  Otherwise,
-	// have not fully traversed into this node (edge not completely traversed).
-	if s.p != len(s.node.prefix) {
+	item := s.Item()
+	if item == nil {
 		return nil, false
 	}
-	if s.node.leaf == nil {
-		return nil, false
-	}
-	return s.node.leaf.value, true
+	return item.value, true
 }
