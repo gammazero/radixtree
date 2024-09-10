@@ -909,7 +909,6 @@ func TestIter(t *testing.T) {
 
 	clear(visited)
 	testKey := "rat/winks/wryly/once"
-	keys = append(keys, testKey)
 	tree.Put(testKey, strings.ToUpper(testKey))
 
 	for key, val := range tree.IterPath(testKey) {

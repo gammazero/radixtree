@@ -259,7 +259,7 @@ func (t *Tree[T]) Iter() iter.Seq2[string, T] {
 //
 // The tree is traversed in lexical order, making the output deterministic.
 func (t *Tree[T]) IterAt(key string) iter.Seq2[string, T] {
-	nothing := func(yield func(string, T) bool) { return }
+	nothing := func(yield func(string, T) bool) {}
 
 	// Find the subtree with a matching prefix.
 	node := &t.root
