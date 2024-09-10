@@ -14,7 +14,7 @@ The implementation is optimized for Get performance and avoids allocate of heap 
 
 This radix tree offers the following features:
 
-- Efficient: Operations are O(key-len). No memory allocation for reading items or during iteration.
+- Efficient: Operations are O(key-len). Zero memory allocation for reading items or iteration.
 - Ordered iteration: Iterating the tree is done in lexical order, making the output deterministic.
 - Store `nil` values: Read operations differentiate between missing and `nil` values.
 - Compact: When values are stored using keys that have a common prefix, the common part of the key is only stored once. Consider this when keys are similar to a timestamp, OID, filepath, geohash, network address, etc. Only the minimum number of nodes are kept to branch at the points where keys differ.

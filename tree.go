@@ -225,7 +225,7 @@ func (t *Tree[T]) DeletePrefix(prefix string) bool {
 
 	if node.edges != nil {
 		var count int
-		for range node.iter(1) {
+		for range node.iter() {
 			count++
 		}
 		t.size -= count
@@ -250,7 +250,7 @@ func (t *Tree[T]) DeletePrefix(prefix string) bool {
 //
 // The tree is traversed in lexical order, making the output deterministic.
 func (t *Tree[T]) Iter() iter.Seq2[string, T] {
-	return t.root.iter(t.size)
+	return t.root.iter()
 }
 
 // IterAt visits all nodes whose keys match or are prefixed by the specified
@@ -259,53 +259,45 @@ func (t *Tree[T]) Iter() iter.Seq2[string, T] {
 //
 // The tree is traversed in lexical order, making the output deterministic.
 func (t *Tree[T]) IterAt(key string) iter.Seq2[string, T] {
-	nothing := func(yield func(string, T) bool) {}
-
-	// Find the subtree with a matching prefix.
-	node := &t.root
-	for len(key) != 0 {
-		if node = node.getEdge(key[0]); node == nil {
-			return nothing
-		}
-
-		// Consume key data
-		key = key[1:]
-		if !strings.HasPrefix(key, node.prefix) {
-			if strings.HasPrefix(node.prefix, key) {
-				break
+	return func(yield func(string, T) bool) {
+		// Find the subtree with a matching prefix.
+		node := &t.root
+		for len(key) != 0 {
+			if node = node.getEdge(key[0]); node == nil {
+				return
 			}
-			return nothing
+
+			// Consume key data
+			key = key[1:]
+			if !strings.HasPrefix(key, node.prefix) {
+				if strings.HasPrefix(node.prefix, key) {
+					break
+				}
+				return
+			}
+			key = key[len(node.prefix):]
 		}
-		key = key[len(node.prefix):]
+		// Iterate the subtree.
+		node.walk(yield)
 	}
-	// Iterate the subtree.
-	return node.iter(1)
 }
 
-func (node *radixNode[T]) iter(size int) iter.Seq2[string, T] {
+func (node *radixNode[T]) iter() iter.Seq2[string, T] {
 	return func(yield func(string, T) bool) {
-		// Iterate nodes of subtree.
-		nodes := make([]*radixNode[T], 1, size)
-		nodes[0] = node
+		node.walk(yield)
+	}
+}
 
-		for len(nodes) != 0 {
-			// pop next node
-			node := nodes[len(nodes)-1]
-			nodes = nodes[:len(nodes)-1]
-
-			// Append all the nodes edges to the nodes list
-			for i := len(node.edges) - 1; i >= 0; i-- {
-				nodes = append(nodes, node.edges[i].node)
-			}
-
-			// If the node is a leaf, yield its value.
-			if node.leaf != nil {
-				if !yield(node.leaf.key, node.leaf.value) {
-					return
-				}
-			}
+func (node *radixNode[T]) walk(yield func(string, T) bool) bool {
+	if node.leaf != nil && !yield(node.leaf.key, node.leaf.value) {
+		return false
+	}
+	for _, edge := range node.edges {
+		if !edge.node.walk(yield) {
+			return false
 		}
 	}
+	return true
 }
 
 // IterPath returns an iterator that visits each node along the path from the
