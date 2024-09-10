@@ -5,7 +5,7 @@ import (
 )
 
 func TestStepper(t *testing.T) {
-	rt := new(Tree)
+	rt := new(Tree[string])
 	rt.Put("tom", "TOM")
 	rt.Put("tomato", "TOMATO")
 	rt.Put("torn", "TORN")
@@ -21,7 +21,7 @@ func TestStepper(t *testing.T) {
 		t.Fatal("'t' should have advanced iterator")
 	}
 	val, ok := iter.Value()
-	if ok || val != nil {
+	if ok || val != "" {
 		t.Fatal("should not have value at 't'")
 	}
 	item := iter.Item()

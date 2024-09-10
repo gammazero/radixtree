@@ -3,15 +3,15 @@ package radixtree
 // Stepper traverses a Tree one byte at a time.
 //
 // Any modification to the tree invalidates the Stepper.
-type Stepper struct {
+type Stepper[T any] struct {
 	p    int
-	node *radixNode
+	node *radixNode[T]
 }
 
 // NewStepper returns a new Stepper instance that begins at the root of the
 // tree.
-func (t *Tree) NewStepper() *Stepper {
-	return &Stepper{
+func (t *Tree[T]) NewStepper() *Stepper[T] {
+	return &Stepper[T]{
 		node: &t.root,
 	}
 }
@@ -19,8 +19,8 @@ func (t *Tree) NewStepper() *Stepper {
 // Copy makes a copy of the current Stepper. This allows branching a Stepper
 // into two that can take separate paths. These Steppers do not affect each
 // other and can be used concurrently.
-func (s *Stepper) Copy() *Stepper {
-	return &Stepper{
+func (s *Stepper[T]) Copy() *Stepper[T] {
+	return &Stepper[T]{
 		p:    s.p,
 		node: s.node,
 	}
@@ -33,7 +33,7 @@ func (s *Stepper) Copy() *Stepper {
 //
 // When false is returned the Stepper is not modified. This allows different
 // values to be used in subsequent calls to Next.
-func (s *Stepper) Next(radix byte) bool {
+func (s *Stepper[T]) Next(radix byte) bool {
 	// The tree.prefix represents single-edge parents without values that were
 	// compressed out of the tree. Let prefix consume key symbols.
 	if s.p < len(s.node.prefix) {
@@ -58,7 +58,7 @@ func (s *Stepper) Next(radix byte) bool {
 
 // Item returns an Item containing the key and value at the current Stepper
 // position, or returns nil if no value is present at the position.
-func (s *Stepper) Item() *Item {
+func (s *Stepper[T]) Item() *Item[T] {
 	// Only return item if all of this node's prefix was matched. Otherwise,
 	// have not fully traversed into this node (edge not completely traversed).
 	if s.p == len(s.node.prefix) {
@@ -69,10 +69,11 @@ func (s *Stepper) Item() *Item {
 
 // Value returns the value at the current Stepper position, and true or false
 // to indicate if a value is present at the position.
-func (s *Stepper) Value() (any, bool) {
+func (s *Stepper[T]) Value() (T, bool) {
 	item := s.Item()
 	if item == nil {
-		return nil, false
+		var zero T
+		return zero, false
 	}
 	return item.value, true
 }
