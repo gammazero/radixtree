@@ -246,7 +246,7 @@ func (t *Tree[T]) DeletePrefix(prefix string) bool {
 	return true
 }
 
-// IterAt visits all nodes in the tree, yielding the key and value of each.
+// Iter visits all nodes in the tree, yielding the key and value of each.
 //
 // The tree is traversed in lexical order, making the output deterministic.
 func (t *Tree[T]) Iter() iter.Seq2[string, T] {
