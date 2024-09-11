@@ -6,74 +6,71 @@ import (
 	"github.com/gammazero/radixtree"
 )
 
-func ExampleTree_Walk() {
-	rt := radixtree.New()
-	rt.Put("tomato", "TOMATO")
-	rt.Put("tom", "TOM")
-	rt.Put("tommy", "TOMMY")
-	rt.Put("tornado", "TORNADO")
+func ExampleTree_Iter() {
+	rt := radixtree.New[int]()
+	rt.Put("mercury", 1)
+	rt.Put("venus", 2)
+	rt.Put("earth", 3)
+	rt.Put("mars", 4)
 
-	// Find all items whose keys start with "tom"
-	rt.Walk("tom", func(key string, value any) bool {
-		fmt.Println(value)
-		return false
-	})
+	// Find all items that that have a key that is a prefix of "tomato".
+	for key, value := range rt.Iter() {
+		fmt.Println(key, "=", value)
+	}
+	// Output:
+	// earth = 3
+	// mars = 4
+	// mercury = 1
+	// venus = 2
 }
 
-func ExampleTree_WalkPath() {
-	rt := radixtree.New()
+func ExampleTree_IterAt() {
+	rt := radixtree.New[string]()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tommy", "TOMMY")
 	rt.Put("tornado", "TORNADO")
 
-	// Find all items that are a prefix of "tomato"
-	rt.WalkPath("tomato", func(key string, value any) bool {
+	// Find all items whose keys start with "tom".
+	for _, value := range rt.IterAt("tom") {
 		fmt.Println(value)
-		return false
-	})
+	}
 	// Output:
 	// TOM
 	// TOMATO
+	// TOMMY
 }
 
-func ExampleTree_NewIterator() {
-	rt := radixtree.New()
+func ExampleTree_IterPath() {
+	rt := radixtree.New[string]()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tommy", "TOMMY")
 	rt.Put("tornado", "TORNADO")
 
-	iter := rt.NewIterator()
-	for {
-		key, val, done := iter.Next()
-		if done {
-			break
-		}
-		fmt.Println(key, "=", val)
+	// Find all items that that have a key that is a prefix of "tomato".
+	for key, value := range rt.IterPath("tomato") {
+		fmt.Println(key, "=", value)
 	}
-
 	// Output:
 	// tom = TOM
 	// tomato = TOMATO
-	// tommy = TOMMY
-	// tornado = TORNADO
 }
 
 func ExampleTree_NewStepper() {
-	rt := radixtree.New()
+	rt := radixtree.New[string]()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tommy", "TOMMY")
 	rt.Put("tornado", "TORNADO")
 
-	iter := rt.NewStepper()
+	stepper := rt.NewStepper()
 	word := "tomato"
 	for i := range word {
-		if !iter.Next(word[i]) {
+		if !stepper.Next(word[i]) {
 			break
 		}
-		if val, ok := iter.Value(); ok {
+		if val, ok := stepper.Value(); ok {
 			fmt.Println(val)
 		}
 	}

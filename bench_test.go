@@ -44,23 +44,23 @@ func BenchmarkPut(b *testing.B) {
 	})
 }
 
-func BenchmarkWalk(b *testing.B) {
+func BenchmarkIter(b *testing.B) {
 	b.Run("Words", func(b *testing.B) {
-		benchmarkWalk(b, web2Path)
+		benchmarkIter(b, web2Path)
 	})
 
 	b.Run("Web2a", func(b *testing.B) {
-		benchmarkWalk(b, web2aPath)
+		benchmarkIter(b, web2aPath)
 	})
 }
 
-func BenchmarkWalkPath(b *testing.B) {
+func BenchmarkIterPath(b *testing.B) {
 	b.Run("Words", func(b *testing.B) {
-		benchmarkWalkPath(b, web2Path)
+		benchmarkIterPath(b, web2Path)
 	})
 
 	b.Run("Web2a", func(b *testing.B) {
-		benchmarkWalkPath(b, web2aPath)
+		benchmarkIterPath(b, web2aPath)
 	})
 }
 
@@ -69,7 +69,7 @@ func benchmarkGet(b *testing.B, filePath string) {
 	if err != nil {
 		b.Skip(err.Error())
 	}
-	tree := new(Tree)
+	tree := new(Tree[string])
 	for _, w := range words {
 		tree.Put(w, w)
 	}
@@ -92,19 +92,19 @@ func benchmarkPut(b *testing.B, filePath string) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
-		tree := new(Tree)
+		tree := new(Tree[string])
 		for _, w := range words {
 			tree.Put(w, w)
 		}
 	}
 }
 
-func benchmarkWalk(b *testing.B, filePath string) {
+func benchmarkIter(b *testing.B, filePath string) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
 	}
-	tree := new(Tree)
+	tree := new(Tree[string])
 	for _, w := range words {
 		tree.Put(w, w)
 	}
@@ -113,22 +113,21 @@ func benchmarkWalk(b *testing.B, filePath string) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		tree.Walk("", func(k string, value any) bool {
+		for range tree.Iter() {
 			count++
-			return false
-		})
+		}
 	}
 	if count != len(words) {
-		b.Fatalf("Walk wrong count, expected %d got %d", len(words), count)
+		b.Fatalf("iter wrong count, expected %d got %d", len(words), count)
 	}
 }
 
-func benchmarkWalkPath(b *testing.B, filePath string) {
+func benchmarkIterPath(b *testing.B, filePath string) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
 	}
-	tree := new(Tree)
+	tree := new(Tree[string])
 	for _, w := range words {
 		tree.Put(w, w)
 	}
@@ -137,13 +136,12 @@ func benchmarkWalkPath(b *testing.B, filePath string) {
 	for n := 0; n < b.N; n++ {
 		found := false
 		for _, w := range words {
-			tree.WalkPath(w, func(key string, value any) bool {
+			for range tree.IterPath(w) {
 				found = true
-				return false
-			})
+			}
 		}
 		if !found {
-			b.Fatal("Walk did not find word")
+			b.Fatal("IterPath did not find word")
 		}
 	}
 }
