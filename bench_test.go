@@ -2,6 +2,8 @@ package radixtree
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"net/http"
@@ -62,6 +64,51 @@ func BenchmarkIterPath(b *testing.B) {
 	b.Run("Web2a", func(b *testing.B) {
 		benchmarkIterPath(b, web2aPath)
 	})
+}
+
+func BenchmarkRebuildVsReload(b *testing.B) {
+	err := downloadFile(web2URL, web2Path)
+	if err != nil {
+		b.Skip(err.Error())
+	}
+	words, err := loadWords(web2Path)
+	if err != nil {
+		b.Skip(err.Error())
+	}
+
+	b.Run("Reload from encoded", func(b *testing.B) {
+		tree := new(Tree[string])
+		for _, w := range words {
+			tree.Put(w, w)
+		}
+
+		var buf bytes.Buffer
+		encoder := gob.NewEncoder(&buf)
+		if err = encoder.Encode(tree); err != nil {
+			b.Fatal(err)
+		}
+		reader := bytes.NewReader(buf.Bytes())
+
+		b.ResetTimer()
+		for n := 0; n < b.N; n++ {
+			tree2 := New[string]()
+			decoder := gob.NewDecoder(reader)
+			err := decoder.Decode(tree2)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run("Rebuild from dictionary", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			tree := new(Tree[string])
+			for _, w := range words {
+				tree.Put(w, w)
+			}
+		}
+	})
+
 }
 
 func benchmarkGet(b *testing.B, filePath string) {
