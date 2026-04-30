@@ -19,9 +19,10 @@ func New[T any]() *Tree[T] {
 type radixNode[T any] struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
-	prefix string
-	edges  []edge[T]
-	leaf   *Item[T]
+	prefix  string
+	radices []byte
+	nodes   []*radixNode[T]
+	leaf    *Item[T]
 }
 
 // InspectFunc is the type of the function called for each node visited by
@@ -39,11 +40,6 @@ type Item[T any] struct {
 
 func (kv *Item[T]) Key() string { return kv.key }
 func (kv *Item[T]) Value() T    { return kv.value }
-
-type edge[T any] struct {
-	radix byte
-	node  *radixNode[T]
-}
 
 // Len returns the number of values stored in the tree.
 func (t *Tree[T]) Len() int {
@@ -82,10 +78,11 @@ func (t *Tree[T]) Get(key string) (T, bool) {
 // existing value.
 func (t *Tree[T]) Put(key string, value T) bool {
 	var (
-		p          int
-		isNewValue bool
-		newEdge    edge[T]
-		hasNewEdge bool
+		p            int
+		isNewValue   bool
+		newEdgeRadix byte
+		newEdgeNode  *radixNode[T]
+		hasNewEdge   bool
 	)
 	node := &t.root
 
@@ -113,7 +110,8 @@ func (t *Tree[T]) Put(key string, value T) bool {
 		if i < len(key)-1 {
 			newChild.prefix = key[i+1:]
 		}
-		newEdge = edge[T]{radix, newChild}
+		newEdgeRadix = radix
+		newEdgeNode = newChild
 		hasNewEdge = true
 		break
 	}
@@ -127,7 +125,7 @@ func (t *Tree[T]) Put(key string, value T) bool {
 	}
 
 	if hasNewEdge {
-		node.addEdge(newEdge)
+		node.addEdge(newEdgeRadix, newEdgeNode)
 		isNewValue = true
 		t.size++
 	} else {
@@ -223,13 +221,14 @@ func (t *Tree[T]) DeletePrefix(prefix string) bool {
 		prefix = prefix[len(node.prefix):]
 	}
 
-	if node.edges != nil {
+	if node.radices != nil {
 		var count int
 		for range node.iter() {
 			count++
 		}
 		t.size -= count
-		node.edges = nil
+		node.radices = nil
+		node.nodes = nil
 	} else {
 		t.size--
 	}
@@ -292,8 +291,8 @@ func (node *radixNode[T]) walk(yield func(string, T) bool) bool {
 	if node.leaf != nil && !yield(node.leaf.key, node.leaf.value) {
 		return false
 	}
-	for _, edge := range node.edges {
-		if !edge.node.walk(yield) {
+	for _, child := range node.nodes {
+		if !child.walk(yield) {
 			return false
 		}
 	}
@@ -350,14 +349,16 @@ func (t *Tree[T]) Inspect(inspectFn InspectFunc[T]) {
 //	("pre", nil, edges[f])--->("ix", leaf, edges[])
 func (node *radixNode[T]) split(p int) {
 	split := &radixNode[T]{
-		edges: node.edges,
-		leaf:  node.leaf,
+		radices: node.radices,
+		nodes:   node.nodes,
+		leaf:    node.leaf,
 	}
 	if p < len(node.prefix)-1 {
 		split.prefix = node.prefix[p+1:]
 	}
-	node.edges = nil
-	node.addEdge(edge[T]{node.prefix[p], split})
+	node.radices = nil
+	node.nodes = nil
+	node.addEdge(node.prefix[p], split)
 	if p == 0 {
 		node.prefix = ""
 	} else {
@@ -367,18 +368,19 @@ func (node *radixNode[T]) split(p int) {
 }
 
 func (node *radixNode[T]) prune(parents []*radixNode[T], links []byte) *radixNode[T] {
-	if node.edges != nil {
+	if node.radices != nil {
 		return node
 	}
 	// iterate parents towards root of tree, removing the empty leaf.
 	for i := len(links) - 1; i >= 0; i-- {
 		node = parents[i]
 		node.delEdge(links[i])
-		if len(node.edges) != 0 {
+		if len(node.radices) != 0 {
 			// parent has other edges, stop.
 			break
 		}
-		node.edges = nil
+		node.radices = nil
+		node.nodes = nil
 		if node.leaf != nil {
 			// parent has a value, stop.
 			break
@@ -388,18 +390,20 @@ func (node *radixNode[T]) prune(parents []*radixNode[T], links []byte) *radixNod
 }
 
 func (node *radixNode[T]) compress() {
-	if len(node.edges) != 1 || node.leaf != nil {
+	if len(node.radices) != 1 || node.leaf != nil {
 		return
 	}
-	edge := node.edges[0]
+	r := node.radices[0]
+	child := node.nodes[0]
 	var b strings.Builder
-	b.Grow(len(node.prefix) + 1 + len(edge.node.prefix))
+	b.Grow(len(node.prefix) + 1 + len(child.prefix))
 	b.WriteString(node.prefix)
-	b.WriteByte(edge.radix)
-	b.WriteString(edge.node.prefix)
+	b.WriteByte(r)
+	b.WriteString(child.prefix)
 	node.prefix = b.String()
-	node.leaf = edge.node.leaf
-	node.edges = edge.node.edges
+	node.leaf = child.leaf
+	node.radices = child.radices
+	node.nodes = child.nodes
 }
 
 func (node *radixNode[T]) inspect(link, key string, depth int, inspectFn InspectFunc[T]) bool {
@@ -410,11 +414,11 @@ func (node *radixNode[T]) inspect(link, key string, depth int, inspectFn Inspect
 		val = node.leaf.value
 		hasVal = true
 	}
-	if inspectFn(link, node.prefix, key, depth, len(node.edges), hasVal, val) {
+	if inspectFn(link, node.prefix, key, depth, len(node.radices), hasVal, val) {
 		return true
 	}
-	for _, edge := range node.edges {
-		if edge.node.inspect(string(edge.radix), key, depth+1, inspectFn) {
+	for i, child := range node.nodes {
+		if child.inspect(string(node.radices[i]), key, depth+1, inspectFn) {
 			return true
 		}
 	}
@@ -425,11 +429,11 @@ func (node *radixNode[T]) inspect(link, key string, depth int, inspectFn Inspect
 //
 // This is faster then going through sort.Interface for repeated searches.
 func (node *radixNode[T]) indexEdge(radix byte) int {
-	n := len(node.edges)
+	n := len(node.radices)
 	i, j := 0, n
 	for i < j {
 		h := int(uint(i+j) >> 1) // avoid overflow when computing h
-		if node.edges[h].radix < radix {
+		if node.radices[h] < radix {
 			i = h + 1
 		} else {
 			j = h
@@ -441,26 +445,32 @@ func (node *radixNode[T]) indexEdge(radix byte) int {
 // getEdge binary searches for edge.
 func (node *radixNode[T]) getEdge(radix byte) *radixNode[T] {
 	idx := node.indexEdge(radix)
-	if idx < len(node.edges) && node.edges[idx].radix == radix {
-		return node.edges[idx].node
+	if idx < len(node.radices) && node.radices[idx] == radix {
+		return node.nodes[idx]
 	}
 	return nil
 }
 
 // addEdge binary searches to find where to insert edge, and inserts at.
-func (node *radixNode[T]) addEdge(e edge[T]) {
-	idx := node.indexEdge(e.radix)
-	node.edges = append(node.edges, edge[T]{})
-	copy(node.edges[idx+1:], node.edges[idx:])
-	node.edges[idx] = e
+func (node *radixNode[T]) addEdge(radix byte, child *radixNode[T]) {
+	idx := node.indexEdge(radix)
+	node.radices = append(node.radices, 0)
+	copy(node.radices[idx+1:], node.radices[idx:])
+	node.radices[idx] = radix
+	node.nodes = append(node.nodes, nil)
+	copy(node.nodes[idx+1:], node.nodes[idx:])
+	node.nodes[idx] = child
 }
 
 // delEdge binary searches for edge and removes it.
 func (node *radixNode[T]) delEdge(radix byte) {
 	idx := node.indexEdge(radix)
-	if idx < len(node.edges) && node.edges[idx].radix == radix {
-		copy(node.edges[idx:], node.edges[idx+1:])
-		node.edges[len(node.edges)-1] = edge[T]{}
-		node.edges = node.edges[:len(node.edges)-1]
+	if idx < len(node.radices) && node.radices[idx] == radix {
+		copy(node.radices[idx:], node.radices[idx+1:])
+		node.radices[len(node.radices)-1] = 0
+		node.radices = node.radices[:len(node.radices)-1]
+		copy(node.nodes[idx:], node.nodes[idx+1:])
+		node.nodes[len(node.nodes)-1] = nil
+		node.nodes = node.nodes[:len(node.nodes)-1]
 	}
 }
