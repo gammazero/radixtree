@@ -6,21 +6,21 @@
 [![codecov](https://codecov.io/gh/gammazero/radixtree/branch/master/graph/badge.svg)](https://codecov.io/gh/gammazero/radixtree)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Package `radixtree` implements an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), aka compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree. This data structure is useful to quickly lookup data by key, find values whose keys have a common prefix, or find values whose keys are a prefix (i.e. found along the way) of a search key.
+Package `radixtree` implements an Adaptive [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree), also known as a compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree. Use it to look up values by key, find values whose keys share a common prefix, or find values whose keys lie along the path to a given key.
 
-It is adaptive in the sense that nodes are not constant size, having only as many children, up to the maximum, as needed to branch to all subtrees. This package implements a radix-256 tree where each key symbol (radix) is a byte, allowing up to 256 possible branches to traverse to the next node.
+The tree uses a radix-256 structure where each key symbol is a byte, giving up to 256 branches per node. Nodes hold only as many children as needed, keeping memory proportional to the data stored.
 
-The implementation is optimized for read performance and does not allocate heap memory for read operation (Get, Iter, IterPath, etc.). Once a radix tree is built, it can be repeatedly searched quickly. Concurrent searches are safe since these do not modify the data structure. Access is not synchronized (not concurrent safe with writes), allowing the caller to synchronize, if needed, in whatever manner works best for the application.
+Read operations (`Get`, `Iter`, `IterAt`, `IterPath`) allocate no heap memory and are safe to call concurrently. Write operations are not synchronized; callers that mix reads and writes must coordinate access themselves.
 
-This radix tree offers the following features:
+## Features
 
-- Efficient: Operations are O(key-len). Zero memory allocation for reading items or iteration.
-- Ordered iteration: Iterating the tree is done in lexical order, making the output deterministic.
-- Store `nil` values: Read operations differentiate between missing and `nil` values.
-- Compact: When values are stored using keys that have a common prefix, the common part of the key is only stored once. Consider this when keys are similar to a timestamp, OID, filepath, geohash, network address, etc. Only the minimum number of nodes are kept to branch at the points where keys differ.
-- Iterators: Go 1.23 iterators allow ranging over key-value pairs stored in the tree. Iterators can traverse all key-value pairs, pairs with a key having specified prefix, or pairs along a key-path from root to a specified key.
-- A `Stepper` type of iterator traverses the tree one specified byte at a time, and is useful for incremental lookup. A Stepper can be copied in order to branch a search and iterate the copies concurrently.
-- Generics: The tree stores the specified type of value without needing to do interface type assertion.
+- **Efficient**: All operations are O(key-length). Reads allocate no heap memory.
+- **Ordered**: Iteration visits keys in lexical order, making output deterministic.
+- **Nil-safe**: `Get` distinguishes between a missing key and a key whose value is `nil`.
+- **Compact**: Keys with a common prefix share storage. Well-suited for timestamps, file paths, geohashes, and network addresses.
+- **Iterators**: Go 1.23 range iterators cover all key-value pairs (`Iter`), pairs with a given prefix (`IterAt`), or pairs along the path from root to a key (`IterPath`).
+- **Stepper**: Walk the tree one byte at a time for incremental lookup. Copy a `Stepper` to branch a search and use the copies concurrently.
+- **Generics**: Store any value type without interface conversions.
 
 ## Install
 
@@ -39,7 +39,7 @@ import (
 )
 
 func main() {
-    rt := radixtree.New()
+    rt := radixtree.New[string]()
     rt.Put("tomato", "TOMATO")
     rt.Put("tom", "TOM")
     rt.Put("tommy", "TOMMY")
@@ -60,23 +60,21 @@ func main() {
     // tomato = TOMATO
     // tommy = TOMMY
 
-    // Find all items whose keys are a prefix of "tomato"
-    for _, value := range rt.IterPath("tomato") {
-        fmt.Println(value)
+    // Find all items whose keys are a prefix of "tomato".
+    for key, value := range rt.IterPath("tomato") {
+        fmt.Println(key, "=", value)
     }
     // Output:
-    // TOM
-    // TOMATO
+    // tom = TOM
+    // tomato = TOMATO
 
     if rt.Delete("tom") {
         fmt.Println("Deleted tom")
     }
     // Output: Deleted tom
 
-    val, found = rt.Get("tom")
-    if found {
-        fmt.Println("Found", val)
-    } else {
+    _, found = rt.Get("tom")
+    if !found {
         fmt.Println("not found")
     }
     // Output: not found
