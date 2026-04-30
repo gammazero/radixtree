@@ -1,17 +1,16 @@
-// Package radixtree implements an Adaptive Radix Tree, aka compressed trie or
-// compact prefix tree. It is adaptive in the sense that nodes are not constant
-// size, having as few or many children as needed to branch to all subtrees.
+// Package radixtree implements an Adaptive Radix Tree, also called a
+// compressed trie or compact prefix tree. Use it to look up values by key,
+// find values whose keys share a common prefix, or find values whose keys
+// lie along the path to a given key.
 //
-// This package implements a radix-256 tree where each key symbol (radix) is a
-// byte, allowing up to 256 possible branches to traverse to the next node.
+// The tree uses a radix-256 structure where each key symbol is a byte,
+// giving up to 256 branches per node. Nodes hold only as many children
+// as needed, keeping memory proportional to the data stored.
 //
-// The implementation is optimized for read performance and allocates zero
-// bytes of heap memory for read oprations. Once the radix tree is built, it
-// can be repeatedly searched quickly. Concurrent searches are safe since these
-// do not modify the radixtree. Access is not synchronized (not concurrent safe
-// with writes), allowing the caller to synchronize, if needed, in whatever
-// manner works best for the application.
+// Read operations (Get, Iter, IterAt, IterPath) allocate no heap memory
+// and are safe to call concurrently. Write operations are not synchronized;
+// callers that mix reads and writes must coordinate access themselves.
 //
-// The API uses string keys, since strings are immutable and therefore it is
-// not necessary make a copy of the key provided to the radix tree.
+// The API accepts string keys. Because strings are immutable, the tree
+// stores them directly without copying.
 package radixtree
