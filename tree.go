@@ -454,6 +454,11 @@ func (node *radixNode[T]) getEdge(radix byte) *radixNode[T] {
 // addEdge binary searches to find where to insert edge, and inserts at.
 func (node *radixNode[T]) addEdge(radix byte, child *radixNode[T]) {
 	idx := node.indexEdge(radix)
+	if idx == len(node.radices) {
+		node.radices = append(node.radices, radix)
+		node.nodes = append(node.nodes, child)
+		return
+	}
 	node.radices = append(node.radices, 0)
 	copy(node.radices[idx+1:], node.radices[idx:])
 	node.radices[idx] = radix
@@ -466,10 +471,12 @@ func (node *radixNode[T]) addEdge(radix byte, child *radixNode[T]) {
 func (node *radixNode[T]) delEdge(radix byte) {
 	idx := node.indexEdge(radix)
 	if idx < len(node.radices) && node.radices[idx] == radix {
-		copy(node.radices[idx:], node.radices[idx+1:])
+		if idx < len(node.radices)-1 {
+			copy(node.radices[idx:], node.radices[idx+1:])
+			copy(node.nodes[idx:], node.nodes[idx+1:])
+		}
 		node.radices[len(node.radices)-1] = 0
 		node.radices = node.radices[:len(node.radices)-1]
-		copy(node.nodes[idx:], node.nodes[idx+1:])
 		node.nodes[len(node.nodes)-1] = nil
 		node.nodes = node.nodes[:len(node.nodes)-1]
 	}
