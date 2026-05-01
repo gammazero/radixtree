@@ -10,7 +10,7 @@ import (
 func TestAddEnd(t *testing.T) {
 	rt := new(Tree[string])
 	rt.Put("tomato", "TOMATO")
-	if len(rt.root.edges) != 1 {
+	if len(rt.root.radices) != 1 {
 		t.Fatal("root should have 1 child")
 	}
 	node := rt.root.getEdge('t')
@@ -26,7 +26,7 @@ func TestAddEnd(t *testing.T) {
 	if node.leaf.value != "TOMATO" {
 		t.Fatal("wrong value at child:", node.leaf.value)
 	}
-	if len(node.edges) != 0 {
+	if len(node.radices) != 0 {
 		t.Fatal("child should have no children")
 	}
 	t.Log(dump(rt))
@@ -35,7 +35,7 @@ func TestAddEnd(t *testing.T) {
 	//      (root) t-> ("om", TOM) a-> ("to", TOMATO)
 	//
 	rt.Put("tom", "TOM")
-	if len(rt.root.edges) != 1 {
+	if len(rt.root.radices) != 1 {
 		t.Fatal("root should have 1 child")
 	}
 	node = rt.root.getEdge('t')
@@ -51,7 +51,7 @@ func TestAddEnd(t *testing.T) {
 	if node.leaf.value != "TOM" {
 		t.Fatal("wrong value at child:", node.leaf.value)
 	}
-	if len(node.edges) != 1 {
+	if len(node.radices) != 1 {
 		t.Fatal("child should have 1 child")
 	}
 	node = node.getEdge('a')
@@ -67,7 +67,7 @@ func TestAddEnd(t *testing.T) {
 	if node.leaf.value != "TOMATO" {
 		t.Fatal("wrong value at child:", node.leaf.value)
 	}
-	if len(node.edges) != 0 {
+	if len(node.radices) != 0 {
 		t.Fatal("node should have no children")
 	}
 	t.Log(dump(rt))
@@ -83,7 +83,7 @@ func TestAddFront(t *testing.T) {
 	t.Log("... add \"tomato\" TOMATO ...")
 	rt.Put("tomato", "TOMATO")
 	t.Log(dump(rt))
-	if len(rt.root.edges) != 1 {
+	if len(rt.root.radices) != 1 {
 		t.Fatal("root should have 1 child")
 	}
 	node := rt.root.getEdge('t')
@@ -99,7 +99,7 @@ func TestAddFront(t *testing.T) {
 	if node.leaf.value != "TOM" {
 		t.Fatal("wrong value at child:", node.leaf.value)
 	}
-	if len(node.edges) != 1 {
+	if len(node.radices) != 1 {
 		t.Fatal("child should have 1 child")
 	}
 	node = node.getEdge('a')
@@ -115,7 +115,7 @@ func TestAddFront(t *testing.T) {
 	if node.leaf.value != "TOMATO" {
 		t.Fatal("wrong value at child:", node.leaf.value)
 	}
-	if len(node.edges) != 0 {
+	if len(node.radices) != 0 {
 		t.Fatal("node should have no children")
 	}
 }
@@ -133,7 +133,7 @@ func TestAddBranch(t *testing.T) {
 	t.Log("... add \"torn\", TORN ...")
 	rt.Put("torn", "TORN")
 	t.Log(dump(rt))
-	if len(rt.root.edges) != 1 {
+	if len(rt.root.radices) != 1 {
 		t.Fatal("root should have 1 child")
 	}
 	node := rt.root.getEdge('t')
@@ -146,7 +146,7 @@ func TestAddBranch(t *testing.T) {
 	if node.leaf != nil {
 		t.Fatal("node should have nil value")
 	}
-	if len(node.edges) != 2 {
+	if len(node.radices) != 2 {
 		t.Fatal("node should have 2 children")
 	}
 	node2 := node.getEdge('m')
@@ -162,7 +162,7 @@ func TestAddBranch(t *testing.T) {
 	if node2.leaf.value != "TOM" {
 		t.Fatal("wrong value at node:", node2.leaf.value)
 	}
-	if len(node2.edges) != 1 {
+	if len(node2.radices) != 1 {
 		t.Fatal("node should have 1 child")
 	}
 	node3 := node2.getEdge('a')
@@ -178,7 +178,7 @@ func TestAddBranch(t *testing.T) {
 	if node3.leaf.value != "TOMATO" {
 		t.Fatal("expected value 'TOMATO', got:", node3.leaf.value)
 	}
-	if len(node3.edges) != 0 {
+	if len(node3.radices) != 0 {
 		t.Fatal("node should have no children")
 	}
 	node2 = node.getEdge('r')
@@ -194,7 +194,7 @@ func TestAddBranch(t *testing.T) {
 	if node2.leaf.value != "TORN" {
 		t.Fatal("wrong value at node:", node2.leaf.value)
 	}
-	if len(node2.edges) != 0 {
+	if len(node2.radices) != 0 {
 		t.Fatal("node should have no children")
 	}
 }
@@ -214,7 +214,7 @@ func TestAddBranchToBranch(t *testing.T) {
 	t.Log("... add \"tag\", TAG ...")
 	rt.Put("tag", "TAG")
 	t.Log(dump(rt))
-	if len(rt.root.edges) != 1 {
+	if len(rt.root.radices) != 1 {
 		t.Fatal("root should have 1 child")
 	}
 	node := rt.root.getEdge('t')
@@ -227,21 +227,21 @@ func TestAddBranchToBranch(t *testing.T) {
 	if node.leaf != nil {
 		t.Fatal("node should have nil value")
 	}
-	if len(node.edges) != 2 {
+	if len(node.radices) != 2 {
 		t.Fatal("node should have 2 children")
 	}
 	node2 := node.getEdge('o')
 	if node2 == nil {
 		t.Fatal("node should have child at 'm'")
 	}
-	if len(node2.edges) != 2 {
+	if len(node2.radices) != 2 {
 		t.Fatal("node should have 2 children")
 	}
 	node2 = node.getEdge('a')
 	if node2 == nil {
 		t.Fatal("node should have child at 'a'")
 	}
-	if len(node2.edges) != 0 {
+	if len(node2.radices) != 0 {
 		t.Fatal("node should have no children")
 	}
 	if node2.prefix != "g" {
@@ -272,7 +272,7 @@ func TestAddExisting(t *testing.T) {
 	t.Log("... add \"to\", TO ...")
 	rt.Put("to", "TO")
 	t.Log(dump(rt))
-	if len(rt.root.edges) != 1 {
+	if len(rt.root.radices) != 1 {
 		t.Fatal("root should have 1 child")
 	}
 	node := rt.root.getEdge('t')
@@ -285,14 +285,14 @@ func TestAddExisting(t *testing.T) {
 	if node.leaf != nil {
 		t.Fatal("node should have nil value")
 	}
-	if len(node.edges) != 2 {
+	if len(node.radices) != 2 {
 		t.Fatal("node should have 2 children")
 	}
 	node2 := node.getEdge('a')
 	if node2 == nil {
 		t.Fatal("node should have child at 'a'")
 	}
-	if len(node2.edges) != 0 {
+	if len(node2.radices) != 0 {
 		t.Fatal("node should have no children")
 	}
 	node2 = node.getEdge('o')
@@ -305,7 +305,7 @@ func TestAddExisting(t *testing.T) {
 	if node2.leaf.value != "TO" {
 		t.Fatal("expected value 'TO', got:", node2.leaf.value)
 	}
-	if len(node2.edges) != 2 {
+	if len(node2.radices) != 2 {
 		t.Fatal("node should have 2 children")
 	}
 	node3 := node2.getEdge('m')
@@ -342,7 +342,7 @@ func TestDelete(t *testing.T) {
 	node = rt.root.getEdge('t')
 	node = node.getEdge('o')
 	node = node.getEdge('m')
-	if node.leaf == nil && len(node.edges) == 1 {
+	if node.leaf == nil && len(node.radices) == 1 {
 		t.Log(dump(rt))
 		t.Error("did not compress deleted node")
 	}
@@ -432,8 +432,8 @@ func TestBuildEdgeCases(t *testing.T) {
 	// (root) /-> ("L1/L2", 1)
 	tree.Put("/L1/L2", 1)
 	t.Log(dump(tree))
-	if len(tree.root.edges) != 1 {
-		t.Fatal("expected 1 child, got ", len(tree.root.edges))
+	if len(tree.root.radices) != 1 {
+		t.Fatal("expected 1 child, got ", len(tree.root.radices))
 	}
 	node := tree.root.getEdge('/')
 	if node == nil {
@@ -525,8 +525,8 @@ func TestBuildEdgeCases(t *testing.T) {
 	if node.leaf != nil {
 		t.Fatal("expected nil value, got ", node.leaf.value)
 	}
-	if len(node.edges) != 2 {
-		t.Fatal("expected 2 children, got ", len(node.edges))
+	if len(node.radices) != 2 {
+		t.Fatal("expected 2 children, got ", len(node.radices))
 	}
 
 	t.Log(dump(tree))
