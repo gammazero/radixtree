@@ -19,7 +19,10 @@ func New[T any]() *Tree[T] {
 type radixNode[T any] struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
-	prefix  string
+	prefix string
+	// Use two parallel slices (radices and nodes) so the binary search in
+	// getEdge operates on a dense byte array, improving cache utilisation on
+	// every tree operation.
 	radices []byte
 	nodes   []*radixNode[T]
 	leaf    *Item[T]
@@ -98,9 +101,9 @@ func (t *Tree[T]) Put(key string, value T) bool {
 			p = 0
 			continue
 		}
-		// Descended as far as prefixes and edges match key, and still have key
-		// data, so add child that has a prefix of the unmatched key data and
-		// set its value to the new value.
+		// Descended as far as prefixes and edges match the key with remaining
+		// key data, so add a child that has a prefix of the unmatched key data
+		// and set its value to the new value.
 		newChild := &radixNode[T]{
 			leaf: &Item[T]{
 				key:   key,
@@ -149,8 +152,10 @@ func (t *Tree[T]) Put(key string, value T) bool {
 func (t *Tree[T]) Delete(key string) bool {
 	node := &t.root
 	var (
-		parents []*radixNode[T]
-		links   []byte
+		parentsArr [64]*radixNode[T]
+		linksArr   [64]byte
+		parents    = parentsArr[:0]
+		links      = linksArr[:0]
 	)
 	for len(key) != 0 {
 		parents = append(parents, node)
