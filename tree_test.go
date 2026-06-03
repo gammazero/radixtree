@@ -1131,9 +1131,9 @@ func dump[T any](tree *Tree[T]) string {
 			b.WriteString("  ")
 		}
 		if hasValue {
-			b.WriteString(fmt.Sprintf("%s-> (%q, [%s: %v]) children: %d\n", link, prefix, key, value, children))
+			fmt.Fprintf(&b, "%s-> (%q, [%s: %v]) children: %d\n", link, prefix, key, value, children)
 		} else {
-			b.WriteString(fmt.Sprintf("%s-> (%q, [%s])] children: %d\n", link, prefix, key, children))
+			fmt.Fprintf(&b, "%s-> (%q, [%s])] children: %d\n", link, prefix, key, children)
 		}
 		return false
 	})

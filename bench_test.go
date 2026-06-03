@@ -151,7 +151,7 @@ func loadWords(wordsFile string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	scanner := bufio.NewScanner(f)
 	var words []string
@@ -185,7 +185,7 @@ func downloadFile(fileURL, filePath string) error {
 	if err != nil {
 		return err
 	}
-	defer rsp.Body.Close()
+	defer rsp.Body.Close() //nolint:errcheck
 
 	if rsp.StatusCode != 200 {
 		return fmt.Errorf("error response getting file: %d", rsp.StatusCode)
@@ -195,7 +195,7 @@ func downloadFile(fileURL, filePath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	_, err = io.Copy(file, rsp.Body)
 	return err
