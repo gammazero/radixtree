@@ -440,7 +440,7 @@ func (node *radixNode[T]) nodeInfos(link, key string, depth int, yield func(Node
 		return false
 	}
 	for i, child := range node.nodes {
-		if !child.nodeInfos(string(node.radices[i]), key, depth+1, yield) {
+		if !child.nodeInfos(string(node.radices[i:i+1]), key, depth+1, yield) {
 			return false
 		}
 	}

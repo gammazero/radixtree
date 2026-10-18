@@ -1120,6 +1120,19 @@ func TestNodes(t *testing.T) {
 	if n := len(slices.Collect(New[int]().Nodes())); n != 1 {
 		t.Fatalf("expected empty tree to have 1 node, got %d", n)
 	}
+
+	// Keys with bytes that are not valid UTF-8 on their own.
+	tree = New[int]()
+	tree.Put("\xff\x80", 1)
+	tree.Put("\xff\x81", 2)
+	var keys []string
+	for node := range tree.Nodes() {
+		keys = append(keys, node.Key)
+	}
+	expectKeys := []string{"", "\xff", "\xff\x80", "\xff\x81"}
+	if !slices.Equal(keys, expectKeys) {
+		t.Fatalf("expected keys %q, got %q", expectKeys, keys)
+	}
 }
 
 func TestGetAfterDelete(t *testing.T) {
