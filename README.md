@@ -5,7 +5,7 @@
 [![codecov](https://codecov.io/gh/gammazero/radixtree/graph/badge.svg?token=RT5GYXGZ9T)](https://codecov.io/gh/gammazero/radixtree)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Package `radixtree` implements a [radix tree](https://en.wikipedia.org/wiki/Radix_tree), also known as a compressed [trie](https://en.wikipedia.org/wiki/Trie) or compact prefix tree. Use it to look up values by key, find values whose keys share a common prefix, or find values whose keys lie along the path to a given key.
+Package `radixtree` implements a [**radix tree**](https://en.wikipedia.org/wiki/Radix_tree), also known as a **compressed** [**trie**](https://en.wikipedia.org/wiki/Trie) or **compact prefix tree**. Use it to look up values by key, find values whose keys share a common prefix, or find values whose keys lie along the path to a given key.
 
 The tree uses a radix-256 structure where each key symbol is a byte, giving up to 256 branches per node. Nodes hold only as many children as needed, keeping memory proportional to the data stored.
 
