@@ -9,7 +9,7 @@ Package `radixtree` implements a [radix tree](https://en.wikipedia.org/wiki/Radi
 
 The tree uses a radix-256 structure where each key symbol is a byte, giving up to 256 branches per node. Nodes hold only as many children as needed, keeping memory proportional to the data stored.
 
-Read operations (`Get`, `All`, `WithPrefix`, `PathTo`, and `Stepper` methods) allocate no heap memory and are safe to call concurrently. Write operations are not synchronized; callers that mix reads and writes must coordinate access themselves.
+Read operations (`Get`, `Iter`, `IterPrefix`, `IterPath`, and `Stepper` methods) allocate no heap memory and are safe to call concurrently. Write operations are not synchronized; callers that mix reads and writes must coordinate access themselves.
 
 ## Features
 
@@ -17,7 +17,7 @@ Read operations (`Get`, `All`, `WithPrefix`, `PathTo`, and `Stepper` methods) al
 - **Ordered**: Iteration visits keys in lexical order, making output deterministic.
 - **Nil-safe**: `Get` distinguishes between a missing key and a key whose value is `nil`.
 - **Compact**: Keys with a common prefix share storage. Well-suited for timestamps, file paths, geohashes, and network addresses.
-- **Iterators**: Range iterators cover all key-value pairs (`All`), pairs whose keys have a given prefix (`WithPrefix`), or pairs whose keys are a prefix of a given key (`PathTo`).
+- **Iterators**: Range iterators cover all key-value pairs (`Iter`), pairs whose keys have a given prefix (`IterPrefix`), or pairs whose keys are a prefix of a given key (`IterPath`).
 - **Inspectable**: `Nodes` iterates over every node of the tree, exposing its structure for debugging and statistics.
 - **Stepper**: Walk the tree one byte at a time for incremental lookup. Copy a `Stepper` to branch a search and use the copies concurrently.
 - **Generics**: Store any value type without interface conversions.
@@ -51,12 +51,12 @@ func main() {
     }
 
     // Find all items whose keys start with "tom".
-    for key, value := range rt.WithPrefix("tom") {
+    for key, value := range rt.IterPrefix("tom") {
         fmt.Println(key, "=", value)
     }
 
     // Find all items whose keys are a prefix of "tomato".
-    for key, value := range rt.PathTo("tomato") {
+    for key, value := range rt.IterPath("tomato") {
         fmt.Println(key, "=", value)
     }
 

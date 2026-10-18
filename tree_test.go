@@ -568,14 +568,14 @@ func TestBuildEdgeCases(t *testing.T) {
 	t.Log(dump(tree))
 }
 
-func TestSimpleWithPrefix(t *testing.T) {
+func TestSimpleIterPrefix(t *testing.T) {
 	rt := New[string]()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tornado", "TORNADO")
 
 	count := 0
-	for range rt.WithPrefix("tomato") {
+	for range rt.IterPrefix("tomato") {
 		count++
 	}
 	if count != 1 {
@@ -583,7 +583,7 @@ func TestSimpleWithPrefix(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.WithPrefix("t") {
+	for range rt.IterPrefix("t") {
 		count++
 	}
 	if count != 3 {
@@ -591,7 +591,7 @@ func TestSimpleWithPrefix(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.WithPrefix("to") {
+	for range rt.IterPrefix("to") {
 		count++
 	}
 	if count != 3 {
@@ -599,7 +599,7 @@ func TestSimpleWithPrefix(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.WithPrefix("tom") {
+	for range rt.IterPrefix("tom") {
 		count++
 	}
 	if count != 2 {
@@ -607,7 +607,7 @@ func TestSimpleWithPrefix(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.WithPrefix("tomx") {
+	for range rt.IterPrefix("tomx") {
 		count++
 	}
 	if count != 0 {
@@ -615,7 +615,7 @@ func TestSimpleWithPrefix(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.WithPrefix("torn") {
+	for range rt.IterPrefix("torn") {
 		count++
 	}
 	if count != 1 {
@@ -679,7 +679,7 @@ func TestTree(t *testing.T) {
 	// iter path
 	t.Log(dump(tree))
 	key := "bad/key"
-	for key, val := range tree.PathTo(key) {
+	for key, val := range tree.IterPath(key) {
 		kvMap[key] = val
 		wvals = append(wvals, val)
 	}
@@ -696,7 +696,7 @@ func TestTree(t *testing.T) {
 	}
 	kvMap = map[string]string{}
 	wvals = nil
-	for key, val := range tree.PathTo(lastKey) {
+	for key, val := range tree.IterPath(lastKey) {
 		kvMap[key] = val
 		wvals = append(wvals, val)
 	}
@@ -813,7 +813,7 @@ func TestRoot(t *testing.T) {
 	}
 }
 
-func TestAll(t *testing.T) {
+func TestIter(t *testing.T) {
 	tree := New[string]()
 
 	keys := []string{
@@ -852,7 +852,7 @@ func TestAll(t *testing.T) {
 	}
 
 	for _, notKey := range notKeys {
-		for key, val := range tree.WithPrefix(notKey) {
+		for key, val := range tree.IterPrefix(notKey) {
 			if val != strings.ToUpper(key) {
 				t.Fatalf("expected key %s to have value %v, got %v", key, strings.ToUpper(key), val)
 			}
@@ -885,8 +885,8 @@ func TestAll(t *testing.T) {
 
 	visited = make(map[string]int, len(keys))
 
-	// All from root.
-	for key, val := range tree.All() {
+	// Iter from root.
+	for key, val := range tree.Iter() {
 		if val != strings.ToUpper(key) {
 			t.Fatalf("expected key %s to have value %v, got %v", key, strings.ToUpper(key), val)
 		}
@@ -903,7 +903,7 @@ func TestAll(t *testing.T) {
 	}
 
 	clear(visited)
-	for key, _ := range tree.WithPrefix("rat") {
+	for key, _ := range tree.IterPrefix("rat") {
 		visited[key]++
 	}
 	if visited[keys[0]] != 0 {
@@ -926,7 +926,7 @@ func TestAll(t *testing.T) {
 	}
 
 	clear(visited)
-	for key, _ := range tree.WithPrefix("rat/whis/kers") {
+	for key, _ := range tree.IterPrefix("rat/whis/kers") {
 		visited[key]++
 	}
 	for _, key := range keys {
@@ -945,7 +945,7 @@ func TestAll(t *testing.T) {
 	testKey := "rat/winks/wryly/once"
 	tree.Put(testKey, strings.ToUpper(testKey))
 
-	for key, val := range tree.PathTo(testKey) {
+	for key, val := range tree.IterPath(testKey) {
 		v := strings.ToUpper(key)
 		if val != v {
 			t.Fatalf("expected key %s to have value %v, got %v", key, v, val)
@@ -958,7 +958,7 @@ func TestAll(t *testing.T) {
 	}
 
 	clear(visited)
-	for key, _ := range tree.PathTo(testKey) {
+	for key, _ := range tree.IterPath(testKey) {
 		pfx := "rat/winks/wryly"
 		if strings.HasPrefix(key, pfx) && len(key) > len(pfx) {
 			continue
@@ -972,7 +972,7 @@ func TestAll(t *testing.T) {
 
 	var found bool
 	clear(visited)
-	for key, _ := range tree.PathTo(testKey) {
+	for key, _ := range tree.IterPath(testKey) {
 		visited[key]++
 		if key == "rat/winks/wryly" {
 			found = true
@@ -989,7 +989,7 @@ func TestAll(t *testing.T) {
 
 	var foundRoot bool
 	tree.Put("", "ROOT")
-	for key, val := range tree.PathTo(testKey) {
+	for key, val := range tree.IterPath(testKey) {
 		if key == "" && val == "ROOT" {
 			foundRoot = true
 			break
@@ -1000,7 +1000,7 @@ func TestAll(t *testing.T) {
 	}
 
 	var lastKey string
-	for key, _ := range tree.PathTo("rat/winks/wisely/x/y/z/w") {
+	for key, _ := range tree.IterPath("rat/winks/wisely/x/y/z/w") {
 		lastKey = key
 	}
 	if lastKey != "rat/winks/wisely/x/y/z" {
@@ -1048,7 +1048,7 @@ func TestIterStop(t *testing.T) {
 	iterErr := errors.New("iter error")
 	var walked int
 	var err error
-	for _, val := range tree.All() {
+	for _, val := range tree.Iter() {
 		if val == 999 {
 			err = iterErr
 			break
@@ -1180,7 +1180,7 @@ func TestStringConvert(t *testing.T) {
 			t.Fatalf("returned wrong value - expected %q got %q", w, v)
 		}
 	}
-	for key, val := range tree.All() {
+	for key, val := range tree.Iter() {
 		t.Log("Key:", key)
 		t.Log("Val:", val)
 		if key != val {
