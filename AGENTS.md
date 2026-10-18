@@ -12,6 +12,8 @@
 | `stepper.go` | `Stepper[T]` for byte-at-a-time incremental lookup; `Copy` allows concurrent branching |
 | `doc.go` | Package-level doc comment |
 | `tree_test.go` | Unit and integration tests for `Tree[T]` |
+| `fuzz_test.go` | Fuzz test comparing `Tree[T]` against a map and checking internal invariants |
+| `testdata/fuzz` | Fuzz corpus; failing inputs found by the fuzzer are kept here as regression tests |
 | `stepper_test.go` | Tests for `Stepper[T]` |
 | `doc_test.go` | Example tests (used by `go doc`) |
 | `bench_test.go` | Benchmarks |
@@ -38,6 +40,12 @@ Run tests with the race detector (required before committing any concurrent-acce
 
 ```bash
 go test -race ./...
+```
+
+Run the fuzz test (required after any change to `Put`, `Delete`, `DeletePrefix`, `split`, `prune`, or `compress`):
+
+```bash
+go test -run '^$' -fuzz FuzzTree -fuzztime 60s .
 ```
 
 Run benchmarks:
