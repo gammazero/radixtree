@@ -24,8 +24,7 @@ func TestStepper(t *testing.T) {
 	if ok || val != "" {
 		t.Fatal("should not have value at 't'")
 	}
-	item := iter.Item()
-	if item != nil {
+	if _, _, ok = iter.Item(); ok {
 		t.Fatal("should not have item at 't'")
 	}
 	if !iter.Next('o') {
@@ -48,12 +47,12 @@ func TestStepper(t *testing.T) {
 	if !ok || val != "TOM" {
 		t.Fatalf("expected \"TOM\" at 'm', got %q", val)
 	}
-	item = iter.Item()
-	if item == nil || item.Value() != "TOM" {
-		t.Fatalf("expected value \"TOM\" at 'm'")
+	key, val, ok := iter.Item()
+	if !ok || val != "TOM" {
+		t.Fatalf("expected value \"TOM\" at 'm', got %q", val)
 	}
-	if item.Key() != "tom" {
-		t.Fatalf("expected key \"tom\" at 'm'")
+	if key != "tom" {
+		t.Fatalf("expected key \"tom\" at 'm', got %q", key)
 	}
 	if !iter.Next('a') {
 		t.Fatal("'a' should have advanced iterator")
@@ -98,5 +97,24 @@ func TestStepper(t *testing.T) {
 	}
 	if iter.Next('x') {
 		t.Fatal("'x' should not have advanced iterator")
+	}
+}
+
+func TestStepperNoAlloc(t *testing.T) {
+	rt := New[string]()
+	rt.Put("tom", "TOM")
+	rt.Put("tomato", "TOMATO")
+
+	allocs := testing.AllocsPerRun(100, func() {
+		s := rt.NewStepper()
+		for _, c := range []byte("tomato") {
+			s.Next(c)
+			s.Value()
+			s.Item()
+		}
+		s.Copy()
+	})
+	if allocs != 0 {
+		t.Fatalf("expected 0 allocations, got %v", allocs)
 	}
 }

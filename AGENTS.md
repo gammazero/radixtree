@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-`radixtree` is a Go library implementing an Adaptive Radix Tree (compressed trie / compact prefix tree). Keys are byte sequences; values are generic (`T any`). The module path is `github.com/gammazero/radixtree`.
+`radixtree` is a Go library implementing a radix tree (compressed trie / compact prefix tree). Keys are byte sequences; values are generic (`T any`). The module path is `github.com/gammazero/radixtree`.
 
 ## Repository Layout
 
 | File | Contents |
 |---|---|
-| `tree.go` | Core `Tree[T]` type: `New`, `Get`, `Put`, `Delete`, `DeletePrefix`, `Iter`, `IterAt`, `IterPath`, `Nodes`, and internal node helpers |
+| `tree.go` | Core `Tree[T]` type: `New`, `Get`, `Put`, `Delete`, `DeletePrefix`, `All`, `WithPrefix`, `PathTo`, `Nodes`, and internal node helpers |
 | `stepper.go` | `Stepper[T]` for byte-at-a-time incremental lookup; `Copy` allows concurrent branching |
 | `doc.go` | Package-level doc comment |
 | `tree_test.go` | Unit and integration tests for `Tree[T]` |
@@ -18,11 +18,11 @@
 | `doc_test.go` | Example tests (used by `go doc`) |
 | `bench_test.go` | Benchmarks |
 | `web2`, `web2a` | Word-list fixtures used by benchmarks |
-| `go.mod` | Module definition; minimum Go version 1.25 |
+| `go.mod` | Module definition; minimum Go version 1.26 |
 
 ## Key Design Invariants
 
-- **Read operations are allocation-free.** `Get`, `Iter`, `IterAt`, `IterPath`, and all `Stepper` methods must not allocate heap memory. Tests and benchmarks verify this.
+- **Read operations are allocation-free.** `Get`, `All`, `WithPrefix`, `PathTo`, and all `Stepper` methods must not allocate heap memory. Tests and benchmarks verify this.
 - **Reads are goroutine-safe; writes are not.** Callers coordinate their own locking. Do not add internal locks.
 - **`Get` distinguishes missing key from nil value.** The second return (`bool`) is the only sentinel; never use a zero value as a sentinel.
 - **Iteration order is lexical.** Any change to `walk` or `iter` must preserve this.
