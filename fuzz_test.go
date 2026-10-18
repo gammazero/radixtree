@@ -77,17 +77,17 @@ func checkTree(t *testing.T, tree *Tree[int], model map[string]int) {
 
 	keys := slices.Sorted(maps.Keys(model))
 	var i int
-	for k, v := range tree.Iter() {
+	for k, v := range tree.All() {
 		if i >= len(keys) {
-			t.Fatalf("Iter yielded extra key %q", k)
+			t.Fatalf("All yielded extra key %q", k)
 		}
 		if k != keys[i] || v != model[k] {
-			t.Fatalf("Iter yielded (%q, %d), expected (%q, %d)", k, v, keys[i], model[keys[i]])
+			t.Fatalf("All yielded (%q, %d), expected (%q, %d)", k, v, keys[i], model[keys[i]])
 		}
 		i++
 	}
 	if i != len(keys) {
-		t.Fatalf("Iter yielded %d items, expected %d", i, len(keys))
+		t.Fatalf("All yielded %d items, expected %d", i, len(keys))
 	}
 
 	for k, v := range model {
@@ -140,7 +140,7 @@ func checkNode(t *testing.T, node *radixNode[int], key string, isRoot bool) {
 	}
 }
 
-// checkQueries verifies IterAt, IterPath, and Stepper against the model.
+// checkQueries verifies WithPrefix, PathTo, and Stepper against the model.
 func checkQueries(t *testing.T, tree *Tree[int], model map[string]int, key string) {
 	t.Helper()
 	keys := slices.Sorted(maps.Keys(model))
@@ -152,14 +152,14 @@ func checkQueries(t *testing.T, tree *Tree[int], model map[string]int, key strin
 		}
 	}
 	var got []string
-	for k, v := range tree.IterAt(key) {
+	for k, v := range tree.WithPrefix(key) {
 		if v != model[k] {
-			t.Fatalf("IterAt(%q) yielded value %d at %q, expected %d", key, v, k, model[k])
+			t.Fatalf("WithPrefix(%q) yielded value %d at %q, expected %d", key, v, k, model[k])
 		}
 		got = append(got, k)
 	}
 	if !slices.Equal(got, expect) {
-		t.Fatalf("IterAt(%q) yielded %q, expected %q", key, got, expect)
+		t.Fatalf("WithPrefix(%q) yielded %q, expected %q", key, got, expect)
 	}
 
 	expect = expect[:0]
@@ -169,11 +169,11 @@ func checkQueries(t *testing.T, tree *Tree[int], model map[string]int, key strin
 		}
 	}
 	got = got[:0]
-	for k := range tree.IterPath(key) {
+	for k := range tree.PathTo(key) {
 		got = append(got, k)
 	}
 	if !slices.Equal(got, expect) {
-		t.Fatalf("IterPath(%q) yielded %q, expected %q", key, got, expect)
+		t.Fatalf("PathTo(%q) yielded %q, expected %q", key, got, expect)
 	}
 
 	// Step through the key one byte at a time, checking for a value at each
@@ -181,13 +181,10 @@ func checkQueries(t *testing.T, tree *Tree[int], model map[string]int, key strin
 	s := tree.NewStepper()
 	for i := 0; ; i++ {
 		v, ok := s.Value()
-		item := s.Item()
+		k, iv, iok := s.Item()
 		mv, mok := model[key[:i]]
-		if ok != mok || v != mv || (item != nil) != mok {
-			t.Fatalf("Stepper at %q: Value() = (%d, %v), Item() = %v, expected (%d, %v)", key[:i], v, ok, item, mv, mok)
-		}
-		if item != nil && (item.Key() != key[:i] || item.Value() != mv) {
-			t.Fatalf("Stepper at %q: Item() = (%q, %d), expected (%q, %d)", key[:i], item.Key(), item.Value(), key[:i], mv)
+		if ok != mok || v != mv || iok != mok || iv != mv || (iok && k != key[:i]) {
+			t.Fatalf("Stepper at %q: Value() = (%d, %v), Item() = (%q, %d, %v), expected (%d, %v)", key[:i], v, ok, k, iv, iok, mv, mok)
 		}
 		if i == len(key) {
 			break

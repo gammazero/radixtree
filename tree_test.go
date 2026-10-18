@@ -568,14 +568,14 @@ func TestBuildEdgeCases(t *testing.T) {
 	t.Log(dump(tree))
 }
 
-func TestSimpleIterAt(t *testing.T) {
+func TestSimpleWithPrefix(t *testing.T) {
 	rt := New[string]()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
 	rt.Put("tornado", "TORNADO")
 
 	count := 0
-	for range rt.IterAt("tomato") {
+	for range rt.WithPrefix("tomato") {
 		count++
 	}
 	if count != 1 {
@@ -583,7 +583,7 @@ func TestSimpleIterAt(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.IterAt("t") {
+	for range rt.WithPrefix("t") {
 		count++
 	}
 	if count != 3 {
@@ -591,7 +591,7 @@ func TestSimpleIterAt(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.IterAt("to") {
+	for range rt.WithPrefix("to") {
 		count++
 	}
 	if count != 3 {
@@ -599,7 +599,7 @@ func TestSimpleIterAt(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.IterAt("tom") {
+	for range rt.WithPrefix("tom") {
 		count++
 	}
 	if count != 2 {
@@ -607,7 +607,7 @@ func TestSimpleIterAt(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.IterAt("tomx") {
+	for range rt.WithPrefix("tomx") {
 		count++
 	}
 	if count != 0 {
@@ -615,7 +615,7 @@ func TestSimpleIterAt(t *testing.T) {
 	}
 
 	count = 0
-	for range rt.IterAt("torn") {
+	for range rt.WithPrefix("torn") {
 		count++
 	}
 	if count != 1 {
@@ -679,7 +679,7 @@ func TestTree(t *testing.T) {
 	// iter path
 	t.Log(dump(tree))
 	key := "bad/key"
-	for key, val := range tree.IterPath(key) {
+	for key, val := range tree.PathTo(key) {
 		kvMap[key] = val
 		wvals = append(wvals, val)
 	}
@@ -696,7 +696,7 @@ func TestTree(t *testing.T) {
 	}
 	kvMap = map[string]string{}
 	wvals = nil
-	for key, val := range tree.IterPath(lastKey) {
+	for key, val := range tree.PathTo(lastKey) {
 		kvMap[key] = val
 		wvals = append(wvals, val)
 	}
@@ -813,7 +813,7 @@ func TestRoot(t *testing.T) {
 	}
 }
 
-func TestIter(t *testing.T) {
+func TestAll(t *testing.T) {
 	tree := New[string]()
 
 	keys := []string{
@@ -852,7 +852,7 @@ func TestIter(t *testing.T) {
 	}
 
 	for _, notKey := range notKeys {
-		for key, val := range tree.IterAt(notKey) {
+		for key, val := range tree.WithPrefix(notKey) {
 			if val != strings.ToUpper(key) {
 				t.Fatalf("expected key %s to have value %v, got %v", key, strings.ToUpper(key), val)
 			}
@@ -885,8 +885,8 @@ func TestIter(t *testing.T) {
 
 	visited = make(map[string]int, len(keys))
 
-	// Iter from root.
-	for key, val := range tree.Iter() {
+	// All from root.
+	for key, val := range tree.All() {
 		if val != strings.ToUpper(key) {
 			t.Fatalf("expected key %s to have value %v, got %v", key, strings.ToUpper(key), val)
 		}
@@ -903,7 +903,7 @@ func TestIter(t *testing.T) {
 	}
 
 	clear(visited)
-	for key, _ := range tree.IterAt("rat") {
+	for key, _ := range tree.WithPrefix("rat") {
 		visited[key]++
 	}
 	if visited[keys[0]] != 0 {
@@ -926,7 +926,7 @@ func TestIter(t *testing.T) {
 	}
 
 	clear(visited)
-	for key, _ := range tree.IterAt("rat/whis/kers") {
+	for key, _ := range tree.WithPrefix("rat/whis/kers") {
 		visited[key]++
 	}
 	for _, key := range keys {
@@ -945,7 +945,7 @@ func TestIter(t *testing.T) {
 	testKey := "rat/winks/wryly/once"
 	tree.Put(testKey, strings.ToUpper(testKey))
 
-	for key, val := range tree.IterPath(testKey) {
+	for key, val := range tree.PathTo(testKey) {
 		v := strings.ToUpper(key)
 		if val != v {
 			t.Fatalf("expected key %s to have value %v, got %v", key, v, val)
@@ -958,7 +958,7 @@ func TestIter(t *testing.T) {
 	}
 
 	clear(visited)
-	for key, _ := range tree.IterPath(testKey) {
+	for key, _ := range tree.PathTo(testKey) {
 		pfx := "rat/winks/wryly"
 		if strings.HasPrefix(key, pfx) && len(key) > len(pfx) {
 			continue
@@ -972,7 +972,7 @@ func TestIter(t *testing.T) {
 
 	var found bool
 	clear(visited)
-	for key, _ := range tree.IterPath(testKey) {
+	for key, _ := range tree.PathTo(testKey) {
 		visited[key]++
 		if key == "rat/winks/wryly" {
 			found = true
@@ -989,7 +989,7 @@ func TestIter(t *testing.T) {
 
 	var foundRoot bool
 	tree.Put("", "ROOT")
-	for key, val := range tree.IterPath(testKey) {
+	for key, val := range tree.PathTo(testKey) {
 		if key == "" && val == "ROOT" {
 			foundRoot = true
 			break
@@ -1000,7 +1000,7 @@ func TestIter(t *testing.T) {
 	}
 
 	var lastKey string
-	for key, _ := range tree.IterPath("rat/winks/wisely/x/y/z/w") {
+	for key, _ := range tree.PathTo("rat/winks/wisely/x/y/z/w") {
 		lastKey = key
 	}
 	if lastKey != "rat/winks/wisely/x/y/z" {
@@ -1048,7 +1048,7 @@ func TestIterStop(t *testing.T) {
 	iterErr := errors.New("iter error")
 	var walked int
 	var err error
-	for _, val := range tree.Iter() {
+	for _, val := range tree.All() {
 		if val == 999 {
 			err = iterErr
 			break
@@ -1106,11 +1106,11 @@ func TestNodes(t *testing.T) {
 	tree.Put("tornado", 3)
 
 	expect := []NodeInfo[int]{
-		{Link: "", Prefix: "", Key: "", Depth: 0, Children: 1},
-		{Link: "t", Prefix: "o", Key: "to", Depth: 1, Children: 2},
-		{Link: "m", Prefix: "", Key: "tom", Depth: 2, Children: 1, HasValue: true, Value: 1},
-		{Link: "a", Prefix: "to", Key: "tomato", Depth: 3, Children: 0, HasValue: true, Value: 2},
-		{Link: "r", Prefix: "nado", Key: "tornado", Depth: 2, Children: 0, HasValue: true, Value: 3},
+		{Link: 0, Prefix: "", Key: "", Depth: 0, Children: 1},
+		{Link: 't', Prefix: "o", Key: "to", Depth: 1, Children: 2},
+		{Link: 'm', Prefix: "", Key: "tom", Depth: 2, Children: 1, HasValue: true, Value: 1},
+		{Link: 'a', Prefix: "to", Key: "tomato", Depth: 3, Children: 0, HasValue: true, Value: 2},
+		{Link: 'r', Prefix: "nado", Key: "tornado", Depth: 2, Children: 0, HasValue: true, Value: 3},
 	}
 	got := slices.Collect(tree.Nodes())
 	if !slices.Equal(got, expect) {
@@ -1180,7 +1180,7 @@ func TestStringConvert(t *testing.T) {
 			t.Fatalf("returned wrong value - expected %q got %q", w, v)
 		}
 	}
-	for key, val := range tree.Iter() {
+	for key, val := range tree.All() {
 		t.Log("Key:", key)
 		t.Log("Val:", val)
 		if key != val {
@@ -1197,10 +1197,13 @@ func dump[T any](tree *Tree[T]) string {
 		for range node.Depth {
 			b.WriteString("  ")
 		}
+		if node.Depth != 0 {
+			b.WriteByte(node.Link)
+		}
 		if node.HasValue {
-			fmt.Fprintf(&b, "%s-> (%q, [%s: %v]) children: %d\n", node.Link, node.Prefix, node.Key, node.Value, node.Children)
+			fmt.Fprintf(&b, "-> (%q, [%s: %v]) children: %d\n", node.Prefix, node.Key, node.Value, node.Children)
 		} else {
-			fmt.Fprintf(&b, "%s-> (%q, [%s]) children: %d\n", node.Link, node.Prefix, node.Key, node.Children)
+			fmt.Fprintf(&b, "-> (%q, [%s]) children: %d\n", node.Prefix, node.Key, node.Children)
 		}
 	}
 	return b.String()

@@ -6,7 +6,7 @@ import (
 	"github.com/gammazero/radixtree"
 )
 
-func ExampleTree_Iter() {
+func ExampleTree_All() {
 	rt := radixtree.New[int]()
 	rt.Put("mercury", 1)
 	rt.Put("venus", 2)
@@ -14,7 +14,7 @@ func ExampleTree_Iter() {
 	rt.Put("mars", 4)
 
 	// Find all items that that have a key that is a prefix of "tomato".
-	for key, value := range rt.Iter() {
+	for key, value := range rt.All() {
 		fmt.Println(key, "=", value)
 	}
 	// Output:
@@ -24,7 +24,7 @@ func ExampleTree_Iter() {
 	// venus = 2
 }
 
-func ExampleTree_IterAt() {
+func ExampleTree_WithPrefix() {
 	rt := radixtree.New[string]()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
@@ -32,7 +32,7 @@ func ExampleTree_IterAt() {
 	rt.Put("tornado", "TORNADO")
 
 	// Find all items whose keys start with "tom".
-	for _, value := range rt.IterAt("tom") {
+	for _, value := range rt.WithPrefix("tom") {
 		fmt.Println(value)
 	}
 	// Output:
@@ -41,7 +41,7 @@ func ExampleTree_IterAt() {
 	// TOMMY
 }
 
-func ExampleTree_IterPath() {
+func ExampleTree_PathTo() {
 	rt := radixtree.New[string]()
 	rt.Put("tomato", "TOMATO")
 	rt.Put("tom", "TOM")
@@ -49,7 +49,7 @@ func ExampleTree_IterPath() {
 	rt.Put("tornado", "TORNADO")
 
 	// Find all items that that have a key that is a prefix of "tomato".
-	for key, value := range rt.IterPath("tomato") {
+	for key, value := range rt.PathTo("tomato") {
 		fmt.Println(key, "=", value)
 	}
 	// Output:

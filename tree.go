@@ -6,13 +6,14 @@ import (
 	"strings"
 )
 
-// Tree is a compressed radix tree of string keys and generic values.
+// Tree is a compressed radix tree of string keys and generic values. The zero
+// value is an empty tree ready to use.
 type Tree[T any] struct {
 	root radixNode[T]
 	size int
 }
 
-// New creates a new bytes-based radix tree
+// New creates a new empty radix tree.
 func New[T any]() *Tree[T] {
 	return new(Tree[T])
 }
@@ -26,14 +27,14 @@ type radixNode[T any] struct {
 	// every tree operation.
 	radices []byte
 	nodes   []*radixNode[T]
-	leaf    *Item[T]
+	leaf    *item[T]
 }
 
 // NodeInfo describes a single node of the tree, as yielded by Nodes.
 type NodeInfo[T any] struct {
-	// Link is the byte, as a string, that the parent uses to index this node.
-	// It is empty for the root node.
-	Link string
+	// Link is the key byte that the parent uses to index this node. It is
+	// zero for the root node, which has no parent.
+	Link byte
 	// Prefix is the edge label between this node and its parent, not
 	// including Link.
 	Prefix string
@@ -50,13 +51,11 @@ type NodeInfo[T any] struct {
 	Value T
 }
 
-type Item[T any] struct {
+// item is a key and the value stored at that key.
+type item[T any] struct {
 	key   string
 	value T
 }
-
-func (kv *Item[T]) Key() string { return kv.key }
-func (kv *Item[T]) Value() T    { return kv.value }
 
 // Len returns the number of values stored in the tree.
 func (t *Tree[T]) Len() int {
@@ -68,7 +67,7 @@ func (t *Tree[T]) Len() int {
 func (t *Tree[T]) Get(key string) (T, bool) {
 	var zero T
 	node := &t.root
-	// Consume key data while mathcing edge and prefix; return if remaining key
+	// Consume key data while matching edge and prefix; return if remaining key
 	// data matches nothing.
 	for len(key) != 0 {
 		// Find edge for radix.
@@ -119,7 +118,7 @@ func (t *Tree[T]) Put(key string, value T) bool {
 		// key data, so add a child that has a prefix of the unmatched key data
 		// and set its value to the new value.
 		newChild := &radixNode[T]{
-			leaf: &Item[T]{
+			leaf: &item[T]{
 				key:   key,
 				value: value,
 			},
@@ -151,7 +150,7 @@ func (t *Tree[T]) Put(key string, value T) bool {
 			isNewValue = true
 			t.size++
 		}
-		node.leaf = &Item[T]{
+		node.leaf = &item[T]{
 			key:   key,
 			value: value,
 		}
@@ -264,36 +263,38 @@ func (t *Tree[T]) DeletePrefix(prefix string) bool {
 	return true
 }
 
-// Iter visits all nodes in the tree, yielding the key and value of each.
+// All returns an iterator that visits every value in the tree, yielding the
+// key and value of each.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree[T]) Iter() iter.Seq2[string, T] {
+func (t *Tree[T]) All() iter.Seq2[string, T] {
 	return t.root.iter()
 }
 
-// IterAt visits all nodes whose keys match or are prefixed by the specified
-// key, yielding the key and value of each. An empty key "" visits all nodes,
-// and is the same as calling Iter.
+// WithPrefix returns an iterator that visits every value whose key starts
+// with the given prefix, yielding the key and value of each. This includes
+// the value whose key is equal to the prefix. An empty prefix visits every
+// value, the same as All.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree[T]) IterAt(key string) iter.Seq2[string, T] {
+func (t *Tree[T]) WithPrefix(prefix string) iter.Seq2[string, T] {
 	return func(yield func(string, T) bool) {
 		// Find the subtree with a matching prefix.
 		node := &t.root
-		for len(key) != 0 {
-			if node = node.getEdge(key[0]); node == nil {
+		for len(prefix) != 0 {
+			if node = node.getEdge(prefix[0]); node == nil {
 				return
 			}
 
-			// Consume key data
-			key = key[1:]
-			if !strings.HasPrefix(key, node.prefix) {
-				if strings.HasPrefix(node.prefix, key) {
+			// Consume prefix data
+			prefix = prefix[1:]
+			if !strings.HasPrefix(prefix, node.prefix) {
+				if strings.HasPrefix(node.prefix, prefix) {
 					break
 				}
 				return
 			}
-			key = key[len(node.prefix):]
+			prefix = prefix[len(node.prefix):]
 		}
 		// Iterate the subtree.
 		node.walk(yield)
@@ -318,9 +319,13 @@ func (node *radixNode[T]) walk(yield func(string, T) bool) bool {
 	return true
 }
 
-// IterPath returns an iterator that visits each node along the path from the
-// root to the node at the given key, yielding the key and value of each.
-func (t *Tree[T]) IterPath(key string) iter.Seq2[string, T] {
+// PathTo returns an iterator that visits every value whose key is a prefix of
+// the given key, yielding the key and value of each. These are the values
+// along the path from the root of the tree to the given key, including the
+// value at the key itself.
+//
+// The values are visited in order of increasing key length.
+func (t *Tree[T]) PathTo(key string) iter.Seq2[string, T] {
 	return func(yield func(string, T) bool) {
 		node := &t.root
 		for {
@@ -351,9 +356,12 @@ func (t *Tree[T]) IterPath(key string) iter.Seq2[string, T] {
 // collected.
 //
 // The tree is traversed in lexical order, making the output deterministic.
+//
+// Unlike the other read operations, Nodes allocates memory to build the key
+// of each node.
 func (t *Tree[T]) Nodes() iter.Seq[NodeInfo[T]] {
 	return func(yield func(NodeInfo[T]) bool) {
-		t.root.nodeInfos("", "", 0, yield)
+		t.root.nodeInfos(0, "", 0, yield)
 	}
 }
 
@@ -423,8 +431,11 @@ func (node *radixNode[T]) compress() {
 	node.nodes = child.nodes
 }
 
-func (node *radixNode[T]) nodeInfos(link, key string, depth int, yield func(NodeInfo[T]) bool) bool {
-	key += link + node.prefix
+func (node *radixNode[T]) nodeInfos(link byte, key string, depth int, yield func(NodeInfo[T]) bool) bool {
+	if depth != 0 {
+		key += string([]byte{link})
+	}
+	key += node.prefix
 	info := NodeInfo[T]{
 		Link:     link,
 		Prefix:   node.prefix,
@@ -440,7 +451,7 @@ func (node *radixNode[T]) nodeInfos(link, key string, depth int, yield func(Node
 		return false
 	}
 	for i, child := range node.nodes {
-		if !child.nodeInfos(string(node.radices[i:i+1]), key, depth+1, yield) {
+		if !child.nodeInfos(node.radices[i], key, depth+1, yield) {
 			return false
 		}
 	}
@@ -449,7 +460,7 @@ func (node *radixNode[T]) nodeInfos(link, key string, depth int, yield func(Node
 
 // indexEdge binary searches for the edge index.
 //
-// This is faster then going through sort.Interface for repeated searches.
+// This is faster than going through sort.Interface for repeated searches.
 func (node *radixNode[T]) indexEdge(radix byte) int {
 	n := len(node.radices)
 	i, j := 0, n
