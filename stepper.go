@@ -79,8 +79,8 @@ func (s *Stepper[T]) Value() (T, bool) {
 // leaf returns the item at the current Stepper position, or nil if there is no
 // value at the position.
 func (s *Stepper[T]) leaf() *item[T] {
-	// Only return item if all of this node's prefix was matched. Otherwise,
-	// have not fully traversed into this node (edge not completely traversed).
+	// Only return item if all of this node's prefix was matched. Otherwise, have
+	// not fully traversed into this node (edge not completely traversed).
 	if s.p == len(s.node.prefix) {
 		return s.node.leaf
 	}

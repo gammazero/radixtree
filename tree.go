@@ -22,9 +22,9 @@ type radixNode[T any] struct {
 	// prefix is the edge label between this node and the parent, minus the key
 	// segment used in the parent to index this child.
 	prefix string
-	// Use two parallel slices (radices and nodes) so the binary search in
-	// getEdge operates on a dense byte array, improving cache utilisation on
-	// every tree operation.
+	// Use two parallel slices (radices and nodes) so the binary search in getEdge
+	// operates on a dense byte array, improving cache utilisation on every tree
+	// operation.
 	radices []byte
 	nodes   []*radixNode[T]
 	leaf    *item[T]
@@ -32,11 +32,11 @@ type radixNode[T any] struct {
 
 // NodeInfo describes a single node of the tree, as yielded by Nodes.
 type NodeInfo[T any] struct {
-	// Link is the key byte that the parent uses to index this node. It is
-	// zero for the root node, which has no parent.
+	// Link is the key byte that the parent uses to index this node. It is zero for
+	// the root node, which has no parent.
 	Link byte
-	// Prefix is the edge label between this node and its parent, not
-	// including Link.
+	// Prefix is the edge label between this node and its parent, not including
+	// Link.
 	Prefix string
 	// Key is the full key at which the node is located.
 	Key string
@@ -46,8 +46,8 @@ type NodeInfo[T any] struct {
 	Children int
 	// HasValue is true if the node holds a value.
 	HasValue bool
-	// Value is the value held by the node. It is the zero value if HasValue
-	// is false.
+	// Value is the value held by the node. It is the zero value if HasValue is
+	// false.
 	Value T
 }
 
@@ -114,9 +114,9 @@ func (t *Tree[T]) Put(key string, value T) bool {
 			p = 0
 			continue
 		}
-		// Descended as far as prefixes and edges match the key with remaining
-		// key data, so add a child that has a prefix of the unmatched key data
-		// and set its value to the new value.
+		// Descended as far as prefixes and edges match the key with remaining key
+		// data, so add a child that has a prefix of the unmatched key data and set its
+		// value to the new value.
 		newChild := &radixNode[T]{
 			leaf: &item[T]{
 				key:   key,
@@ -131,8 +131,8 @@ func (t *Tree[T]) Put(key string, value T) bool {
 		hasNewEdge = true
 		break
 	}
-	// Key has been consumed by traversing prefixes and/or edges, or has been
-	// put into new child.
+	// Key has been consumed by traversing prefixes and/or edges, or has been put
+	// into new child.
 
 	// If key partially matches node's prefix, then need to split node.
 	if p < len(node.prefix) {
@@ -271,10 +271,10 @@ func (t *Tree[T]) All() iter.Seq2[string, T] {
 	return t.root.iter()
 }
 
-// WithPrefix returns an iterator that visits every value whose key starts
-// with the given prefix, yielding the key and value of each. This includes
-// the value whose key is equal to the prefix. An empty prefix visits every
-// value, the same as All.
+// WithPrefix returns an iterator that visits every value whose key starts with
+// the given prefix, yielding the key and value of each. This includes the
+// value whose key is equal to the prefix. An empty prefix visits every value,
+// the same as All.
 //
 // The tree is traversed in lexical order, making the output deterministic.
 func (t *Tree[T]) WithPrefix(prefix string) iter.Seq2[string, T] {
@@ -357,8 +357,8 @@ func (t *Tree[T]) PathTo(key string) iter.Seq2[string, T] {
 //
 // The tree is traversed in lexical order, making the output deterministic.
 //
-// Unlike the other read operations, Nodes allocates memory to build the key
-// of each node.
+// Unlike the other read operations, Nodes allocates memory to build the key of
+// each node.
 func (t *Tree[T]) Nodes() iter.Seq[NodeInfo[T]] {
 	return func(yield func(NodeInfo[T]) bool) {
 		t.root.nodeInfos(0, "", 0, yield)

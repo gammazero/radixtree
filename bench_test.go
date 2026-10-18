@@ -13,8 +13,8 @@ const (
 	// web2: Webster's Second International Dictionary, all 234,936 words worth.
 	web2URL  = "https://raw.githubusercontent.com/openbsd/src/master/share/dict/web2"
 	web2Path = "web2"
-	// web2a: hyphenated terms as well as assorted noun and adverbial
-	// phrasesfrom Webster's Second International Dictionary.
+	// web2a: hyphenated terms as well as assorted noun and adverbial phrases from
+	// Webster's Second International Dictionary.
 	web2aURL  = "https://raw.githubusercontent.com/openbsd/src/master/share/dict/web2a"
 	web2aPath = "web2a"
 )

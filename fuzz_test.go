@@ -115,8 +115,8 @@ func checkTree(t *testing.T, tree *Tree[int], model map[string]int) {
 	checkNode(t, &tree.root, "", true)
 }
 
-// checkNode verifies that the parallel radices and nodes slices are
-// consistent and sorted, and that each leaf is stored at its own key.
+// checkNode verifies that the parallel radices and nodes slices are consistent
+// and sorted, and that each leaf is stored at its own key.
 func checkNode(t *testing.T, node *radixNode[int], key string, isRoot bool) {
 	t.Helper()
 	key += node.prefix
