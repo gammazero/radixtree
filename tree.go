@@ -320,11 +320,16 @@ func (node *radixNode[T]) walk(yield func(string, T) bool) bool {
 }
 
 // IterPath returns an iterator that visits every value whose key is a prefix
-// of the given key, yielding the key and value of each. These are the values
-// along the path from the root of the tree to the given key, including the
-// value at the key itself.
+// of the given key, yielding the key and value of each. This includes the
+// value at the given key itself, and the value at the empty key "", if those
+// are present. The given key does not need to be in the tree.
 //
-// The values are visited in order of increasing key length.
+// For example, if the tree holds the keys "t", "to", "tom", "tomb", and
+// "tomato", then IterPath("tomatoes") visits "t", "to", "tom", and "tomato".
+// It does not visit "tomb", which is not a prefix of "tomatoes".
+//
+// Values are visited from the shortest key to the longest, following the path
+// from the root of the tree toward the given key.
 func (t *Tree[T]) IterPath(key string) iter.Seq2[string, T] {
 	return func(yield func(string, T) bool) {
 		node := &t.root
