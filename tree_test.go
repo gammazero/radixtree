@@ -1050,17 +1050,17 @@ func TestInspectStop(t *testing.T) {
 	inspectFn := func(link, prefix, key string, depth, children int, hasValue bool, value int) bool {
 		if !hasValue {
 			// Do not count internal nodes
-			return false
+			return true
 		}
 		keys = append(keys, key)
 		switch value {
 		case 555:
 			// Stop inspect
-			return true
+			return false
 		case 999:
 			t.Fatal("should not get here")
 		}
-		return false
+		return true
 	}
 	tree.Inspect(inspectFn)
 	if len(keys) != len(table)-2 {
@@ -1135,7 +1135,7 @@ func dump[T any](tree *Tree[T]) string {
 		} else {
 			fmt.Fprintf(&b, "%s-> (%q, [%s])] children: %d\n", link, prefix, key, children)
 		}
-		return false
+		return true
 	})
 	return b.String()
 }
