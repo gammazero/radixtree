@@ -57,6 +57,25 @@ func ExampleTree_IterPath() {
 	// tomato = TOMATO
 }
 
+func ExampleTree_Nodes() {
+	rt := radixtree.New[string]()
+	rt.Put("tom", "TOM")
+	rt.Put("tomato", "TOMATO")
+	rt.Put("tornado", "TORNADO")
+
+	// Count the nodes in the tree, and how many hold values.
+	var nodes, values int
+	for node := range rt.Nodes() {
+		nodes++
+		if node.HasValue {
+			values++
+		}
+	}
+	fmt.Println("nodes:", nodes, "values:", values)
+	// Output:
+	// nodes: 5 values: 3
+}
+
 func ExampleTree_NewStepper() {
 	rt := radixtree.New[string]()
 	rt.Put("tomato", "TOMATO")

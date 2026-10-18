@@ -8,7 +8,7 @@
 
 | File | Contents |
 |---|---|
-| `tree.go` | Core `Tree[T]` type: `New`, `Get`, `Put`, `Delete`, `DeletePrefix`, `Iter`, `IterAt`, `IterPath`, `Inspect`, and internal node helpers |
+| `tree.go` | Core `Tree[T]` type: `New`, `Get`, `Put`, `Delete`, `DeletePrefix`, `Iter`, `IterAt`, `IterPath`, `Nodes`, and internal node helpers |
 | `stepper.go` | `Stepper[T]` for byte-at-a-time incremental lookup; `Copy` allows concurrent branching |
 | `doc.go` | Package-level doc comment |
 | `tree_test.go` | Unit and integration tests for `Tree[T]` |
