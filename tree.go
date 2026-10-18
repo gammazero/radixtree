@@ -263,21 +263,21 @@ func (t *Tree[T]) DeletePrefix(prefix string) bool {
 	return true
 }
 
-// All returns an iterator that visits every value in the tree, yielding the
+// Iter returns an iterator that visits every value in the tree, yielding the
 // key and value of each.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree[T]) All() iter.Seq2[string, T] {
+func (t *Tree[T]) Iter() iter.Seq2[string, T] {
 	return t.root.iter()
 }
 
-// WithPrefix returns an iterator that visits every value whose key starts with
+// IterPrefix returns an iterator that visits every value whose key starts with
 // the given prefix, yielding the key and value of each. This includes the
 // value whose key is equal to the prefix. An empty prefix visits every value,
-// the same as All.
+// the same as Iter.
 //
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree[T]) WithPrefix(prefix string) iter.Seq2[string, T] {
+func (t *Tree[T]) IterPrefix(prefix string) iter.Seq2[string, T] {
 	return func(yield func(string, T) bool) {
 		// Find the subtree with a matching prefix.
 		node := &t.root
@@ -319,13 +319,13 @@ func (node *radixNode[T]) walk(yield func(string, T) bool) bool {
 	return true
 }
 
-// PathTo returns an iterator that visits every value whose key is a prefix of
-// the given key, yielding the key and value of each. These are the values
+// IterPath returns an iterator that visits every value whose key is a prefix
+// of the given key, yielding the key and value of each. These are the values
 // along the path from the root of the tree to the given key, including the
 // value at the key itself.
 //
 // The values are visited in order of increasing key length.
-func (t *Tree[T]) PathTo(key string) iter.Seq2[string, T] {
+func (t *Tree[T]) IterPath(key string) iter.Seq2[string, T] {
 	return func(yield func(string, T) bool) {
 		node := &t.root
 		for {

@@ -7,10 +7,10 @@
 // up to 256 branches per node. Nodes hold only as many children as needed,
 // keeping memory proportional to the data stored.
 //
-// Read operations (Get, All, WithPrefix, PathTo, and Stepper methods) allocate
-// no heap memory and are safe to call concurrently. Write operations are not
-// synchronized; callers that mix reads and writes must coordinate access
-// themselves.
+// Read operations (Get, Iter, IterPrefix, IterPath, and Stepper methods)
+// allocate no heap memory and are safe to call concurrently. Write operations
+// are not synchronized; callers that mix reads and writes must coordinate
+// access themselves.
 //
 // The API accepts string keys. Because strings are immutable, the tree stores
 // them directly without copying.

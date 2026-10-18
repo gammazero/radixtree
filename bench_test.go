@@ -44,23 +44,23 @@ func BenchmarkPut(b *testing.B) {
 	})
 }
 
-func BenchmarkAll(b *testing.B) {
+func BenchmarkIter(b *testing.B) {
 	b.Run("Words", func(b *testing.B) {
-		benchmarkAll(b, web2Path)
+		benchmarkIter(b, web2Path)
 	})
 
 	b.Run("Web2a", func(b *testing.B) {
-		benchmarkAll(b, web2aPath)
+		benchmarkIter(b, web2aPath)
 	})
 }
 
-func BenchmarkPathTo(b *testing.B) {
+func BenchmarkIterPath(b *testing.B) {
 	b.Run("Words", func(b *testing.B) {
-		benchmarkPathTo(b, web2Path)
+		benchmarkIterPath(b, web2Path)
 	})
 
 	b.Run("Web2a", func(b *testing.B) {
-		benchmarkPathTo(b, web2aPath)
+		benchmarkIterPath(b, web2aPath)
 	})
 }
 
@@ -99,7 +99,7 @@ func benchmarkPut(b *testing.B, filePath string) {
 	}
 }
 
-func benchmarkAll(b *testing.B, filePath string) {
+func benchmarkIter(b *testing.B, filePath string) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
@@ -113,7 +113,7 @@ func benchmarkAll(b *testing.B, filePath string) {
 	var count int
 	for n := 0; n < b.N; n++ {
 		count = 0
-		for range tree.All() {
+		for range tree.Iter() {
 			count++
 		}
 	}
@@ -122,7 +122,7 @@ func benchmarkAll(b *testing.B, filePath string) {
 	}
 }
 
-func benchmarkPathTo(b *testing.B, filePath string) {
+func benchmarkIterPath(b *testing.B, filePath string) {
 	words, err := loadWords(filePath)
 	if err != nil {
 		b.Skip(err.Error())
@@ -136,12 +136,12 @@ func benchmarkPathTo(b *testing.B, filePath string) {
 	for n := 0; n < b.N; n++ {
 		found := false
 		for _, w := range words {
-			for range tree.PathTo(w) {
+			for range tree.IterPath(w) {
 				found = true
 			}
 		}
 		if !found {
-			b.Fatal("PathTo did not find word")
+			b.Fatal("IterPath did not find word")
 		}
 	}
 }
