@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// Tree is a radix tree of bytes keys and any values.
+// Tree is a compressed radix tree of string keys and generic values.
 type Tree[T any] struct {
 	root radixNode[T]
 	size int
@@ -33,7 +33,7 @@ type radixNode[T any] struct {
 // depth is the distance from the root of the tree, and children is the number
 // of children the node has.
 //
-// If the function returns true Inspect stops immediately and returns.
+// If the function returns false Inspect stops immediately and returns.
 type InspectFunc[T any] func(link, prefix, key string, depth, children int, hasValue bool, value T) bool
 
 type Item[T any] struct {
@@ -258,8 +258,8 @@ func (t *Tree[T]) Iter() iter.Seq2[string, T] {
 }
 
 // IterAt visits all nodes whose keys match or are prefixed by the specified
-// key, yielding the key and value of each. An empty key "" to visits all
-// nodes, and is the same as calling Iter.
+// key, yielding the key and value of each. An empty key "" visits all nodes,
+// and is the same as calling Iter.
 //
 // The tree is traversed in lexical order, making the output deterministic.
 func (t *Tree[T]) IterAt(key string) iter.Seq2[string, T] {
@@ -305,9 +305,7 @@ func (node *radixNode[T]) walk(yield func(string, T) bool) bool {
 }
 
 // IterPath returns an iterator that visits each node along the path from the
-// root to the node at the given key. yielding the key and value of each.
-//
-// The tree is traversed in lexical order, making the output deterministic.
+// root to the node at the given key, yielding the key and value of each.
 func (t *Tree[T]) IterPath(key string) iter.Seq2[string, T] {
 	return func(yield func(string, T) bool) {
 		node := &t.root
@@ -419,15 +417,15 @@ func (node *radixNode[T]) inspect(link, key string, depth int, inspectFn Inspect
 		val = node.leaf.value
 		hasVal = true
 	}
-	if inspectFn(link, node.prefix, key, depth, len(node.radices), hasVal, val) {
-		return true
+	if !inspectFn(link, node.prefix, key, depth, len(node.radices), hasVal, val) {
+		return false
 	}
 	for i, child := range node.nodes {
-		if child.inspect(string(node.radices[i]), key, depth+1, inspectFn) {
-			return true
+		if !child.inspect(string(node.radices[i]), key, depth+1, inspectFn) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // indexEdge binary searches for the edge index.
