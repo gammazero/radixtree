@@ -273,10 +273,16 @@ func (t *Tree[T]) Iter() iter.Seq2[string, T] {
 
 // IterPrefix returns an iterator that visits every value whose key starts with
 // the given prefix, yielding the key and value of each. This includes the
-// value whose key is equal to the prefix. An empty prefix visits every value,
-// the same as Iter.
+// value at the prefix itself, if present. The prefix does not need to be a key
+// in the tree. An empty prefix visits every value, the same as Iter.
 //
-// The tree is traversed in lexical order, making the output deterministic.
+// For example, if the tree holds the keys "t", "to", "tom", "tomb", and
+// "tomato", then IterPrefix("tom") visits "tom", "tomato", and "tomb", and
+// IterPrefix("toma") visits "tomato". This is the reverse of IterPath, which
+// visits the keys that are prefixes of the given key.
+//
+// Values are visited in lexical order of their keys, making the output
+// deterministic.
 func (t *Tree[T]) IterPrefix(prefix string) iter.Seq2[string, T] {
 	return func(yield func(string, T) bool) {
 		// Find the subtree with a matching prefix.
