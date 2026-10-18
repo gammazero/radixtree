@@ -1,3 +1,3 @@
 module github.com/gammazero/radixtree
 
-go 1.25
+go 1.26

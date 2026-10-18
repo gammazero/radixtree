@@ -2,6 +2,7 @@ package radixtree
 
 import (
 	"iter"
+	"slices"
 	"strings"
 )
 
@@ -377,9 +378,9 @@ func (node *radixNode[T]) prune(parents []*radixNode[T], links []byte) *radixNod
 		return node
 	}
 	// iterate parents towards root of tree, removing the empty leaf.
-	for i := len(links) - 1; i >= 0; i-- {
+	for i, link := range slices.Backward(links) {
 		node = parents[i]
-		node.delEdge(links[i])
+		node.delEdge(link)
 		if len(node.radices) != 0 {
 			// parent has other edges, stop.
 			break
