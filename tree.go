@@ -29,13 +29,26 @@ type radixNode[T any] struct {
 	leaf    *Item[T]
 }
 
-// InspectFunc is the type of the function called for each node visited by
-// Inspect. The key argument contains the key at which the node is located, the
-// depth is the distance from the root of the tree, and children is the number
-// of children the node has.
-//
-// If the function returns false Inspect stops immediately and returns.
-type InspectFunc[T any] func(link, prefix, key string, depth, children int, hasValue bool, value T) bool
+// NodeInfo describes a single node of the tree, as yielded by Nodes.
+type NodeInfo[T any] struct {
+	// Link is the byte, as a string, that the parent uses to index this node.
+	// It is empty for the root node.
+	Link string
+	// Prefix is the edge label between this node and its parent, not
+	// including Link.
+	Prefix string
+	// Key is the full key at which the node is located.
+	Key string
+	// Depth is the distance from the root of the tree.
+	Depth int
+	// Children is the number of children the node has.
+	Children int
+	// HasValue is true if the node holds a value.
+	HasValue bool
+	// Value is the value held by the node. It is the zero value if HasValue
+	// is false.
+	Value T
+}
 
 type Item[T any] struct {
 	key   string
@@ -332,16 +345,16 @@ func (t *Tree[T]) IterPath(key string) iter.Seq2[string, T] {
 	}
 }
 
-// Inspect walks every node of the tree, whether or not it holds a value,
-// calling inspectFn with information about each node. This allows the
+// Nodes returns an iterator that visits every node of the tree, whether or not
+// it holds a value, yielding information about each node. This allows the
 // structure of the tree to be examined and detailed statistics to be
 // collected.
 //
-// If inspectFn returns false, the traversal is stopped and Inspect returns.
-//
 // The tree is traversed in lexical order, making the output deterministic.
-func (t *Tree[T]) Inspect(inspectFn InspectFunc[T]) {
-	t.root.inspect("", "", 0, inspectFn)
+func (t *Tree[T]) Nodes() iter.Seq[NodeInfo[T]] {
+	return func(yield func(NodeInfo[T]) bool) {
+		t.root.nodeInfos("", "", 0, yield)
+	}
 }
 
 // split splits a node such that a node:
@@ -410,19 +423,24 @@ func (node *radixNode[T]) compress() {
 	node.nodes = child.nodes
 }
 
-func (node *radixNode[T]) inspect(link, key string, depth int, inspectFn InspectFunc[T]) bool {
+func (node *radixNode[T]) nodeInfos(link, key string, depth int, yield func(NodeInfo[T]) bool) bool {
 	key += link + node.prefix
-	var val T
-	var hasVal bool
-	if node.leaf != nil {
-		val = node.leaf.value
-		hasVal = true
+	info := NodeInfo[T]{
+		Link:     link,
+		Prefix:   node.prefix,
+		Key:      key,
+		Depth:    depth,
+		Children: len(node.radices),
 	}
-	if !inspectFn(link, node.prefix, key, depth, len(node.radices), hasVal, val) {
+	if node.leaf != nil {
+		info.HasValue = true
+		info.Value = node.leaf.value
+	}
+	if !yield(info) {
 		return false
 	}
 	for i, child := range node.nodes {
-		if !child.inspect(string(node.radices[i]), key, depth+1, inspectFn) {
+		if !child.nodeInfos(string(node.radices[i]), key, depth+1, yield) {
 			return false
 		}
 	}

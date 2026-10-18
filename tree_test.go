@@ -3,6 +3,7 @@ package radixtree
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -1029,7 +1030,7 @@ func TestIterStop(t *testing.T) {
 	}
 }
 
-func TestInspectStop(t *testing.T) {
+func TestNodesStop(t *testing.T) {
 	tree := New[int]()
 
 	table := []struct {
@@ -1047,24 +1048,44 @@ func TestInspectStop(t *testing.T) {
 		tree.Put(table[i].key, table[i].val)
 	}
 	var keys []string
-	inspectFn := func(link, prefix, key string, depth, children int, hasValue bool, value int) bool {
-		if !hasValue {
+	for node := range tree.Nodes() {
+		if !node.HasValue {
 			// Do not count internal nodes
-			return true
+			continue
 		}
-		keys = append(keys, key)
-		switch value {
-		case 555:
-			// Stop inspect
-			return false
-		case 999:
+		keys = append(keys, node.Key)
+		if node.Value == 555 {
+			break
+		}
+		if node.Value == 999 {
 			t.Fatal("should not get here")
 		}
-		return true
 	}
-	tree.Inspect(inspectFn)
 	if len(keys) != len(table)-2 {
 		t.Errorf("expected nodes iterated to be %d, got %d: %v", len(table)-2, len(keys), keys)
+	}
+}
+
+func TestNodes(t *testing.T) {
+	tree := New[int]()
+	tree.Put("tom", 1)
+	tree.Put("tomato", 2)
+	tree.Put("tornado", 3)
+
+	expect := []NodeInfo[int]{
+		{Link: "", Prefix: "", Key: "", Depth: 0, Children: 1},
+		{Link: "t", Prefix: "o", Key: "to", Depth: 1, Children: 2},
+		{Link: "m", Prefix: "", Key: "tom", Depth: 2, Children: 1, HasValue: true, Value: 1},
+		{Link: "a", Prefix: "to", Key: "tomato", Depth: 3, Children: 0, HasValue: true, Value: 2},
+		{Link: "r", Prefix: "nado", Key: "tornado", Depth: 2, Children: 0, HasValue: true, Value: 3},
+	}
+	got := slices.Collect(tree.Nodes())
+	if !slices.Equal(got, expect) {
+		t.Fatalf("unexpected nodes:\nexpected %+v\ngot      %+v", expect, got)
+	}
+
+	if n := len(slices.Collect(New[int]().Nodes())); n != 1 {
+		t.Fatalf("expected empty tree to have 1 node, got %d", n)
 	}
 }
 
@@ -1123,19 +1144,18 @@ func TestStringConvert(t *testing.T) {
 	}
 }
 
-// Use the Inspect functionality to create a function to dump the tree.
+// Use the Nodes iterator to create a function to dump the tree.
 func dump[T any](tree *Tree[T]) string {
 	var b strings.Builder
-	tree.Inspect(func(link, prefix, key string, depth, children int, hasValue bool, value T) bool {
-		for ; depth > 0; depth-- {
+	for node := range tree.Nodes() {
+		for range node.Depth {
 			b.WriteString("  ")
 		}
-		if hasValue {
-			fmt.Fprintf(&b, "%s-> (%q, [%s: %v]) children: %d\n", link, prefix, key, value, children)
+		if node.HasValue {
+			fmt.Fprintf(&b, "%s-> (%q, [%s: %v]) children: %d\n", node.Link, node.Prefix, node.Key, node.Value, node.Children)
 		} else {
-			fmt.Fprintf(&b, "%s-> (%q, [%s])] children: %d\n", link, prefix, key, children)
+			fmt.Fprintf(&b, "%s-> (%q, [%s]) children: %d\n", node.Link, node.Prefix, node.Key, node.Children)
 		}
-		return true
-	})
+	}
 	return b.String()
 }
