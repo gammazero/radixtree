@@ -397,6 +397,39 @@ func TestDeletePrefix(t *testing.T) {
 	}
 }
 
+func TestDeletePrefixNoValues(t *testing.T) {
+	rt := New[int]()
+	if rt.DeletePrefix("") {
+		t.Error("should not delete from empty tree")
+	}
+	if rt.Len() != 0 {
+		t.Errorf("expected length 0, got %d", rt.Len())
+	}
+
+	rt.Put("ab", 1)
+	rt.Put("ac", 2)
+	rt.Delete("ab")
+	rt.Delete("ac")
+	if rt.DeletePrefix("") {
+		t.Error("should not delete from tree with all values deleted")
+	}
+	if rt.Len() != 0 {
+		t.Errorf("expected length 0, got %d", rt.Len())
+	}
+
+	rt.Put("", 1)
+	rt.Put("a", 2)
+	if !rt.DeletePrefix("") {
+		t.Error("should have deleted all values")
+	}
+	if rt.Len() != 0 {
+		t.Errorf("expected length 0, got %d", rt.Len())
+	}
+	if _, ok := rt.Get(""); ok {
+		t.Error("should not have value at empty key")
+	}
+}
+
 func TestBuildEdgeCases(t *testing.T) {
 	tree := new(Tree[int])
 

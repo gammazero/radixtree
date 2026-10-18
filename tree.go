@@ -240,17 +240,17 @@ func (t *Tree[T]) DeletePrefix(prefix string) bool {
 		prefix = prefix[len(node.prefix):]
 	}
 
-	if node.radices != nil {
-		var count int
-		for range node.iter() {
-			count++
-		}
-		t.size -= count
-		node.radices = nil
-		node.nodes = nil
-	} else {
-		t.size--
+	var count int
+	for range node.iter() {
+		count++
 	}
+	if count == 0 {
+		// Only the root can be without values in its subtree.
+		return false
+	}
+	t.size -= count
+	node.radices = nil
+	node.nodes = nil
 	node.leaf = nil
 
 	// If node is leaf, remove from parent. If parent becomes leaf, repeat.
